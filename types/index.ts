@@ -182,21 +182,19 @@ export interface SarvamSTTResponse {
 export interface SarvamTTSRequest {
   text: string;
   target_language_code: SarvamLanguageCode;
-  speaker?: string;
-  model?: string;
-  speech_sample_rate?: number;
-  enable_preprocessing?: boolean;
-  pitch?: number;
-  pace?: number;
-  loudness?: number;
+  speaker?: string;   // lowercase: "shubh", "anushka", etc.
+  model?: string;      // "bulbul:v3"
+  pace?: number;       // default 1.0
+  enable_preprocessing?: boolean; // default true
 }
 
 export interface SarvamTTSResponse {
-  audios: string[]; // base64-encoded audio chunks
+  request_id?: string;
+  audios: string[]; // base64-encoded WAV audio
 }
 
 /** Max characters for Sarvam TTS */
-export const SARVAM_TTS_MAX_CHARS = 1500; // bulbul:v2 limit
+export const SARVAM_TTS_MAX_CHARS = 1500;
 
 export interface SarvamTranslateRequest {
   input: string;

@@ -105,12 +105,14 @@ export async function speechToText(
 }
 
 /**
- * Text-to-Speech (Bulbul V2): convert text to base64 audio.
+ * Text-to-Speech (Bulbul V3): convert text to base64 WAV audio.
  *
  * POST https://api.sarvam.ai/text-to-speech
- * Body: JSON with `text`, `target_language_code`, `speaker`, `model`, etc.
+ * Body: JSON with `text`, `target_language_code`, `speaker`, `model`,
+ *       `pace`, `enable_preprocessing`
  *
- * Bulbul V2 max: 1500 chars. Text is auto-truncated if longer.
+ * Speaker must be lowercase. Response: { request_id, audios: [base64_wav] }
+ * Max 1500 chars — auto-truncated if longer.
  */
 export async function textToSpeech(
   request: SarvamTTSRequest
@@ -123,16 +125,13 @@ export async function textToSpeech(
   const requestBody = {
     text: truncatedText,
     target_language_code: request.target_language_code,
-    speaker: request.speaker ?? "anushka",
-    model: request.model ?? "bulbul:v2",
-    pitch: request.pitch ?? 0,
+    speaker: request.speaker ?? "shubh",
+    model: request.model ?? "bulbul:v3",
     pace: request.pace ?? 1.0,
-    loudness: request.loudness ?? 1.0,
-    speech_sample_rate: request.speech_sample_rate ?? 22050,
     enable_preprocessing: request.enable_preprocessing ?? true,
   };
 
-  console.log("[sarvam] TTS request body:", JSON.stringify(requestBody, null, 2));
+  console.log("[sarvam] TTS FULL request body:", JSON.stringify(requestBody, null, 2));
 
   const response = await fetch(`${SARVAM_BASE_URL}/text-to-speech`, {
     method: "POST",
@@ -145,7 +144,7 @@ export async function textToSpeech(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[sarvam] TTS error:", {
+    console.error("[sarvam] TTS FULL error response:", {
       status: response.status,
       statusText: response.statusText,
       errorBody,
@@ -158,6 +157,7 @@ export async function textToSpeech(
 
   const data = await response.json();
   console.log("[sarvam] TTS response:", {
+    request_id: data.request_id,
     audioChunks: data.audios?.length,
     firstChunkLength: data.audios?.[0]?.length,
   });
