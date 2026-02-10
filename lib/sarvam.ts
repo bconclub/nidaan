@@ -105,13 +105,14 @@ export async function speechToText(
 }
 
 /**
- * Text-to-Speech (Bulbul V3): convert text to base64 WAV audio.
+ * Text-to-Speech (Bulbul V3): convert text to base64 MP3 audio.
  *
  * POST https://api.sarvam.ai/text-to-speech
  * Body: JSON with `text`, `target_language_code`, `speaker`, `model`,
- *       `pace`, `enable_preprocessing`
+ *       `pace`, `enable_preprocessing`, `output_audio_codec`
  *
- * Speaker must be lowercase. Response: { request_id, audios: [base64_wav] }
+ * Speaker must be lowercase. output_audio_codec: "mp3" for MP3 output.
+ * Response: { request_id, audios: [base64_mp3] }
  * Max 1500 chars — auto-truncated if longer.
  */
 export async function textToSpeech(
@@ -129,7 +130,7 @@ export async function textToSpeech(
     model: request.model ?? "bulbul:v3",
     pace: request.pace ?? 1.0,
     enable_preprocessing: request.enable_preprocessing ?? true,
-    audio_format: "mp3",
+    output_audio_codec: "mp3",
   };
 
   console.log("[sarvam TTS] FULL REQUEST:", JSON.stringify({
