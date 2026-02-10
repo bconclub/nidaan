@@ -205,11 +205,27 @@ async function processAndRespond(
       const { setLatestAudio } = await import("@/lib/test-audio-store");
       setLatestAudio(audioBuffer);
 
-      // Upload to Meta — EXACT same way as working test
+      // Auto-detect audio format from magic bytes
+      let audioMime = "audio/mpeg";
+      let audioFilename = "response.mp3";
+      if (firstBytes[0] === 0x52 && firstBytes[1] === 0x49 && firstBytes[2] === 0x46 && firstBytes[3] === 0x46) {
+        audioMime = "audio/wav";
+        audioFilename = "response.wav";
+      } else if (firstBytes[0] === 0x4F && firstBytes[1] === 0x67 && firstBytes[2] === 0x67 && firstBytes[3] === 0x53) {
+        audioMime = "audio/ogg";
+        audioFilename = "response.ogg";
+      } else if ((firstBytes[0] === 0x49 && firstBytes[1] === 0x44 && firstBytes[2] === 0x33) ||
+                 (firstBytes[0] === 0xFF && (firstBytes[1] & 0xE0) === 0xE0)) {
+        audioMime = "audio/mpeg";
+        audioFilename = "response.mp3";
+      }
+      console.log("[webhook] Upload mime:", audioMime, "filename:", audioFilename);
+
+      // Upload to Meta with auto-detected format
       const formData = new FormData();
       formData.append("messaging_product", "whatsapp");
-      formData.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "response.mp3");
-      formData.append("type", "audio/mpeg");
+      formData.append("file", new Blob([audioBuffer], { type: audioMime }), audioFilename);
+      formData.append("type", audioMime);
 
       const uploadRes = await fetch(`https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
         method: "POST",

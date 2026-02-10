@@ -54,11 +54,28 @@ export async function sendAudioMessage(
   const audioBuffer = Buffer.from(audioBase64, "base64");
   console.log("[whatsapp] Audio buffer size:", audioBuffer.length);
 
-  // Step 2: Upload to Meta (exact same FormData as working test)
+  // Step 2: Auto-detect format from magic bytes
+  const fb = Array.from(audioBuffer.slice(0, 4));
+  let audioMime = "audio/mpeg";
+  let audioFilename = "response.mp3";
+  if (fb[0] === 0x52 && fb[1] === 0x49 && fb[2] === 0x46 && fb[3] === 0x46) {
+    audioMime = "audio/wav";
+    audioFilename = "response.wav";
+  } else if (fb[0] === 0x4F && fb[1] === 0x67 && fb[2] === 0x67 && fb[3] === 0x53) {
+    audioMime = "audio/ogg";
+    audioFilename = "response.ogg";
+  } else if ((fb[0] === 0x49 && fb[1] === 0x44 && fb[2] === 0x33) ||
+             (fb[0] === 0xFF && (fb[1] & 0xE0) === 0xE0)) {
+    audioMime = "audio/mpeg";
+    audioFilename = "response.mp3";
+  }
+  console.log("[whatsapp] Auto-detected format:", audioMime, audioFilename, "magic bytes:", fb);
+
+  // Step 3: Upload to Meta with correct format
   const formData = new FormData();
   formData.append("messaging_product", "whatsapp");
-  formData.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "response.mp3");
-  formData.append("type", "audio/mpeg");
+  formData.append("file", new Blob([audioBuffer], { type: audioMime }), audioFilename);
+  formData.append("type", audioMime);
 
   const uploadRes = await fetch(
     `${GRAPH_API_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/media`,
