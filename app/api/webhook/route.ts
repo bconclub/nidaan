@@ -1,4 +1,4 @@
-import { sendTextMessage, sendAudioMessage, downloadMedia } from "@/lib/whatsapp";
+import { sendTextMessage, downloadMedia } from "@/lib/whatsapp";
 import { speechToText, translate, textToSpeech } from "@/lib/sarvam";
 import { analyzeSymptoms, toTriageAnalysis } from "@/lib/claude";
 import { formatTriageMessage } from "@/lib/triage-engine";
@@ -169,7 +169,7 @@ async function processAndRespond(
     localizedMessage = backTranslate.translated_text;
   }
 
-  // TTS (with fallback — skip audio if TTS fails)
+  // TTS + audio send (inline — exact same pattern as working test)
   console.log("[webhook] Generating TTS");
   try {
     const ttsResult = await textToSpeech({
@@ -178,11 +178,47 @@ async function processAndRespond(
     });
 
     if (ttsResult.audios?.[0]) {
-      await sendAudioMessage(sender, ttsResult.audios[0]);
-      console.log("[webhook] Audio response sent");
+      // Decode base64 to buffer
+      const audioBuffer = Buffer.from(ttsResult.audios[0], "base64");
+      console.log("[webhook] TTS audio buffer size:", audioBuffer.length);
+
+      // Upload to Meta — EXACT same way as working test
+      const formData = new FormData();
+      formData.append("messaging_product", "whatsapp");
+      formData.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "response.mp3");
+      formData.append("type", "audio/mpeg");
+
+      const uploadRes = await fetch(`https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/media`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}` },
+        body: formData
+      });
+      const uploadData = await uploadRes.json();
+      console.log("[webhook] Media upload response:", JSON.stringify(uploadData));
+
+      if (uploadData.id) {
+        // Send audio — EXACT same way as working test
+        const sendRes = await fetch(`https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: sender,
+            type: "audio",
+            audio: { id: uploadData.id }
+          })
+        });
+        const sendData = await sendRes.json();
+        console.log("[webhook] Audio send response:", JSON.stringify(sendData));
+      } else {
+        console.error("[webhook] Media upload failed, no ID returned:", uploadData);
+      }
     }
   } catch (ttsError) {
-    console.error("[webhook] TTS failed, skipping audio:", ttsError);
+    console.error("[webhook] TTS/audio failed, skipping audio:", ttsError);
   }
 
   // Always send text
