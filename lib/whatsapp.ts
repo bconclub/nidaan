@@ -50,13 +50,13 @@ export async function sendAudioMessage(
 ): Promise<void> {
   console.log("[whatsapp] Uploading audio for:", to);
 
-  // Step 1: Convert base64 WAV to Buffer and upload as media
+  // Step 1: Convert base64 MP3 to Buffer and upload as media
   const audioBuffer = Buffer.from(audioBase64, "base64");
-  const blob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/wav" });
+  const blob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/mpeg" });
 
   const uploadForm = new FormData();
-  uploadForm.append("file", blob, "response.wav");
-  uploadForm.append("type", "audio/wav");
+  uploadForm.append("file", blob, "response.mp3");
+  uploadForm.append("type", "audio/mpeg");
   uploadForm.append("messaging_product", "whatsapp");
 
   const uploadResponse = await fetch(
