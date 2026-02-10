@@ -9,6 +9,9 @@ import {
 } from "@/lib/conversation-store";
 import type { SarvamLanguageCode } from "@/types";
 
+// Deduplicate: track processed message IDs (Meta sends retries)
+const processedMessages = new Set<string>();
+
 /**
  * GET /api/webhook
  * WhatsApp webhook verification (Meta/Facebook webhook handshake).
@@ -53,6 +56,17 @@ export async function POST(request: Request) {
       console.log("[webhook] No message in payload (status update), ignoring");
       return new Response("OK", { status: 200 });
     }
+
+    // Deduplicate: Meta sends retries, skip already-processed messages
+    const messageId = message.id as string | undefined;
+    if (!messageId || processedMessages.has(messageId)) {
+      console.log("[webhook] Duplicate or missing message ID, skipping:", messageId);
+      return new Response("OK", { status: 200 });
+    }
+    processedMessages.add(messageId);
+
+    // Auto-cleanup after 1000 entries
+    if (processedMessages.size > 1000) processedMessages.clear();
 
     sender = message.from;
     const messageType: string = message.type;
