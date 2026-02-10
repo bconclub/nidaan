@@ -170,12 +170,13 @@ export type SarvamLanguageCode =
 
 export interface SarvamSTTRequest {
   audio: Blob | File;
-  language_code: SarvamLanguageCode;
+  language_code?: SarvamLanguageCode; // optional: omit for auto-detect
 }
 
 export interface SarvamSTTResponse {
   transcript: string;
   language_code: SarvamLanguageCode;
+  language_probability?: number; // confidence 0-1 when auto-detected
 }
 
 export interface SarvamTTSRequest {
@@ -183,19 +184,25 @@ export interface SarvamTTSRequest {
   target_language_code: SarvamLanguageCode;
   speaker?: string;
   model?: string;
+  speech_sample_rate?: number;
+  enable_preprocessing?: boolean;
+  pitch?: number;
+  pace?: number;
+  loudness?: number;
 }
 
 export interface SarvamTTSResponse {
   audios: string[]; // base64-encoded audio chunks
 }
 
-/** Max characters for Sarvam TTS Bulbul V3 */
-export const SARVAM_TTS_MAX_CHARS = 2500;
+/** Max characters for Sarvam TTS */
+export const SARVAM_TTS_MAX_CHARS = 1500; // bulbul:v2 limit
 
 export interface SarvamTranslateRequest {
   input: string;
-  source_language_code: SarvamLanguageCode;
+  source_language_code: SarvamLanguageCode | "auto";
   target_language_code: SarvamLanguageCode;
+  model?: string;
 }
 
 export interface SarvamTranslateResponse {

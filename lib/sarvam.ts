@@ -50,20 +50,27 @@ export function fromSarvamCode(code: SarvamLanguageCode): Language {
 }
 
 /**
- * Speech-to-Text (Saaras): convert audio to text.
+ * Speech-to-Text (Saarika v2.5): convert audio to text.
  *
  * POST https://api.sarvam.ai/speech-to-text
- * Body: multipart/form-data with `file` (audio) + `language_code`
+ * Body: multipart/form-data with `file` (audio) + optional `language_code`
+ *
+ * When language_code is omitted, Sarvam auto-detects the language
+ * and returns language_code + language_probability in the response.
  */
 export async function speechToText(
   request: SarvamSTTRequest
 ): Promise<SarvamSTTResponse> {
   const formData = new FormData();
   formData.append("file", request.audio, "audio.wav");
-  formData.append("language_code", request.language_code);
+
+  // Only add language_code if explicitly provided (omit for auto-detect)
+  if (request.language_code) {
+    formData.append("language_code", request.language_code);
+  }
 
   console.log("[sarvam] STT request:", {
-    language_code: request.language_code,
+    language_code: request.language_code ?? "auto-detect",
     audioSize: request.audio.size,
   });
 
@@ -87,21 +94,23 @@ export async function speechToText(
   console.log("[sarvam] STT response:", {
     transcript: data.transcript?.slice(0, 80),
     language_code: data.language_code,
+    language_probability: data.language_probability,
   });
 
   return {
     transcript: data.transcript,
-    language_code: data.language_code ?? request.language_code,
+    language_code: data.language_code ?? request.language_code ?? "hi-IN",
+    language_probability: data.language_probability,
   };
 }
 
 /**
- * Text-to-Speech (Bulbul V3): convert text to base64 audio.
+ * Text-to-Speech (Bulbul V2): convert text to base64 audio.
  *
  * POST https://api.sarvam.ai/text-to-speech
- * Body: JSON with `text`, `target_language_code`, `speaker`, `model`
+ * Body: JSON with `text`, `target_language_code`, `speaker`, `model`, etc.
  *
- * Bulbul V3 max: 2500 chars. Text is auto-truncated if longer.
+ * Bulbul V2 max: 1500 chars. Text is auto-truncated if longer.
  */
 export async function textToSpeech(
   request: SarvamTTSRequest
@@ -114,8 +123,13 @@ export async function textToSpeech(
   const requestBody = {
     text: truncatedText,
     target_language_code: request.target_language_code,
-    speaker: request.speaker ?? "Shubh",
-    model: request.model ?? "bulbul:v3",
+    speaker: request.speaker ?? "meera",
+    model: request.model ?? "bulbul:v2",
+    pitch: request.pitch ?? 0,
+    pace: request.pace ?? 1.0,
+    loudness: request.loudness ?? 1.0,
+    speech_sample_rate: request.speech_sample_rate ?? 22050,
+    enable_preprocessing: request.enable_preprocessing ?? true,
   };
 
   console.log("[sarvam] TTS request body:", JSON.stringify(requestBody, null, 2));
@@ -157,20 +171,24 @@ export async function textToSpeech(
  * Translate text between supported Indian languages.
  *
  * POST https://api.sarvam.ai/translate
- * Body: JSON with `input`, `source_language_code`, `target_language_code`
+ * Body: JSON with `input`, `source_language_code`, `target_language_code`, `model`
+ *
+ * Use source_language_code: "auto" with model: "mayura:v1" for auto-detection.
  */
 export async function translate(
   request: SarvamTranslateRequest
 ): Promise<SarvamTranslateResponse> {
-  const body = {
+  const requestBody = {
     input: request.input,
     source_language_code: request.source_language_code,
     target_language_code: request.target_language_code,
+    model: request.model ?? "mayura:v1",
   };
 
   console.log("[sarvam] Translate request:", {
-    source: body.source_language_code,
-    target: body.target_language_code,
+    source: requestBody.source_language_code,
+    target: requestBody.target_language_code,
+    model: requestBody.model,
     inputLength: request.input.length,
   });
 
@@ -180,12 +198,16 @@ export async function translate(
       "api-subscription-key": SARVAM_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[sarvam] Translate error:", response.status, errorBody);
+    console.error("[sarvam] Translate error:", {
+      status: response.status,
+      errorBody,
+      requestBody: JSON.stringify(requestBody),
+    });
     throw new Error(
       `Sarvam Translate failed (${response.status}): ${errorBody}`
     );
