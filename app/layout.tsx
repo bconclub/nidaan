@@ -2,9 +2,25 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Nidaan AI — Multilingual Health Triage",
+  title: "Nidaan AI — Voice-First Health Triage for India",
   description:
-    "AI-powered symptom triage for rural India via WhatsApp, with voice support in 10+ Indian languages.",
+    "Speak your symptoms in any Indian language. Get instant clinical triage, severity assessment, and nearest doctor — all on WhatsApp. Powered by Sarvam AI and Claude.",
+  openGraph: {
+    title: "Nidaan AI — Voice-First Health Triage for India",
+    description:
+      "Speak your symptoms in any Indian language. Get instant clinical triage. Find the nearest doctor. All on WhatsApp.",
+    url: "https://nidaanai.vercel.app",
+    siteName: "Nidaan AI",
+    type: "website",
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nidaan AI — Voice-First Health Triage for India",
+    description:
+      "Speak your symptoms in any Indian language. Get instant clinical triage. Find the nearest doctor. All on WhatsApp.",
+  },
+  metadataBase: new URL("https://nidaanai.vercel.app"),
 };
 
 export default function RootLayout({
@@ -13,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-medical-light font-sans">
+    <html lang="en" className="scroll-smooth">
+      <body className="min-h-screen font-sans">
         {children}
       </body>
     </html>
