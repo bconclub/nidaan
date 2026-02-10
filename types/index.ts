@@ -155,36 +155,63 @@ export interface WhatsAppOutgoingMessage {
 
 // ── Sarvam AI ───────────────────────────────────────────────────────
 
+/** Maps our Language codes to Sarvam's BCP-47 language codes */
+export type SarvamLanguageCode =
+  | "hi-IN"
+  | "en-IN"
+  | "bn-IN"
+  | "ta-IN"
+  | "te-IN"
+  | "mr-IN"
+  | "gu-IN"
+  | "kn-IN"
+  | "ml-IN"
+  | "pa-IN";
+
 export interface SarvamSTTRequest {
-  audio_url: string;
-  language: Language;
+  audio: Blob | File;
+  language_code: SarvamLanguageCode;
 }
 
 export interface SarvamSTTResponse {
   transcript: string;
-  language_detected: Language;
-  confidence: number;
+  language_code: SarvamLanguageCode;
 }
 
 export interface SarvamTTSRequest {
-  text: string;
-  language: Language;
-  voice?: string;
+  inputs: string[];
+  target_language_code: SarvamLanguageCode;
+  speaker?: string;
+  model?: string;
 }
 
 export interface SarvamTTSResponse {
-  audio_url: string;
-  duration_seconds: number;
+  audios: string[]; // base64-encoded audio chunks
 }
 
 export interface SarvamTranslateRequest {
-  text: string;
-  source_language: Language;
-  target_language: Language;
+  input: string;
+  source_language_code: SarvamLanguageCode;
+  target_language_code: SarvamLanguageCode;
 }
 
 export interface SarvamTranslateResponse {
   translated_text: string;
+}
+
+// ── Claude Triage Analysis ──────────────────────────────────────────
+
+export type TriageSeverity = "emergency" | "urgent" | "routine";
+
+export interface TriageAnalysis {
+  condition: string;
+  severity: TriageSeverity;
+  confidence: number;
+  explanation: string;
+  recommended_action: string;
+  specialist_needed: string;
+  red_flags: string[];
+  home_care: string;
 }
 
 // ── Claude Clinical Reasoning ───────────────────────────────────────

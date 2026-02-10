@@ -2,10 +2,65 @@ import type {
   Symptom,
   Condition,
   TriageResult,
+  TriageAnalysis,
+  TriageSeverity,
   Severity,
   ClinicalReasoningResponse,
 } from "@/types";
 import conditions from "@/data/conditions.json";
+
+const SEVERITY_EMOJI: Record<TriageSeverity, string> = {
+  emergency: "\uD83D\uDD34",
+  urgent: "\uD83D\uDFE0",
+  routine: "\uD83D\uDFE2",
+};
+
+const SEVERITY_LABEL: Record<TriageSeverity, string> = {
+  emergency: "Emergency",
+  urgent: "Urgent",
+  routine: "Routine",
+};
+
+/**
+ * Format a TriageAnalysis into a patient-friendly message.
+ */
+export function formatTriageMessage(
+  result: TriageAnalysis,
+  language: string = "en"
+): string {
+  const emoji = SEVERITY_EMOJI[result.severity];
+  const label = SEVERITY_LABEL[result.severity];
+  const lines: string[] = [];
+
+  lines.push(`${emoji} ${label}: Your symptoms suggest ${result.condition}.`);
+
+  if (result.severity === "emergency") {
+    lines.push(result.recommended_action);
+    lines.push(`Look for: ${result.specialist_needed}.`);
+    if (result.red_flags.length > 0) {
+      lines.push(`Watch for: ${result.red_flags.join(", ")}.`);
+    }
+  } else if (result.severity === "urgent") {
+    lines.push(result.explanation);
+    lines.push(result.recommended_action);
+    lines.push(`Please see a ${result.specialist_needed} soon.`);
+    if (result.red_flags.length > 0) {
+      lines.push(`Warning signs: ${result.red_flags.join(", ")}.`);
+    }
+  } else {
+    lines.push(result.explanation);
+    if (result.home_care) {
+      lines.push(result.home_care);
+    }
+    lines.push(
+      `Please visit a ${result.specialist_needed} within the next few days.`
+    );
+  }
+
+  lines.push("Always consult a real doctor for proper diagnosis.");
+
+  return lines.join(" ");
+}
 
 /**
  * Match patient symptoms against the conditions database.
