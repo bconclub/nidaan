@@ -123,7 +123,7 @@ export async function textToSpeech(
   const requestBody = {
     text: truncatedText,
     target_language_code: request.target_language_code,
-    speaker: request.speaker ?? "meera",
+    speaker: request.speaker ?? "anushka",
     model: request.model ?? "bulbul:v2",
     pitch: request.pitch ?? 0,
     pace: request.pace ?? 1.0,
