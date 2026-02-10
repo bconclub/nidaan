@@ -129,7 +129,7 @@ export async function textToSpeech(
     model: request.model ?? "bulbul:v3",
     pace: request.pace ?? 1.0,
     enable_preprocessing: request.enable_preprocessing ?? true,
-    audio_format: "opus",
+    audio_format: "mp3",
   };
 
   console.log("[sarvam TTS] FULL REQUEST:", JSON.stringify({

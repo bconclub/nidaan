@@ -1,9 +1,6 @@
-import { storeAudio } from "@/lib/audio-store";
-
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN!;
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID!;
 const GRAPH_API_BASE = "https://graph.facebook.com/v18.0";
-const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://nidaanai.vercel.app";
 
 /**
  * Send a text message to a WhatsApp user via Meta Graph API.
@@ -44,8 +41,8 @@ export async function sendTextMessage(
 /**
  * Send an audio message to a WhatsApp user via Meta Graph API.
  *
- * Strategy: Store audio in memory, serve via /api/audio/[id], send URL to WhatsApp.
- * This avoids media upload format issues — WhatsApp fetches the audio from our server.
+ * Strategy: Upload media to Meta → send by media ID.
+ * FormData matches the exact working pattern from test-upload.
  */
 export async function sendAudioMessage(
   to: string,
@@ -53,24 +50,39 @@ export async function sendAudioMessage(
 ): Promise<void> {
   console.log("[whatsapp] Preparing audio for:", to, "base64 length:", audioBase64.length);
 
-  // Step 1: Store audio buffer and get a public URL
+  // Step 1: Decode base64 to buffer
   const audioBuffer = Buffer.from(audioBase64, "base64");
-  const audioId = storeAudio(audioBuffer, "audio/ogg");
-  const audioUrl = `${APP_BASE_URL}/api/audio/${audioId}`;
+  console.log("[whatsapp] Audio buffer size:", audioBuffer.length);
 
-  console.log("[whatsapp] Audio stored, serving at:", audioUrl, "buffer size:", audioBuffer.length);
+  // Step 2: Upload to Meta (exact same FormData as working test)
+  const formData = new FormData();
+  formData.append("messaging_product", "whatsapp");
+  formData.append("file", new Blob([audioBuffer], { type: "audio/mpeg" }), "response.mp3");
+  formData.append("type", "audio/mpeg");
 
-  // Step 2: Send audio message with link
-  const messageBody = {
-    messaging_product: "whatsapp",
-    to,
-    type: "audio",
-    audio: { link: audioUrl },
-  };
+  const uploadRes = await fetch(
+    `${GRAPH_API_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/media`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}` },
+      body: formData,
+    }
+  );
 
-  console.log("[whatsapp] Sending audio message:", JSON.stringify(messageBody, null, 2));
+  const uploadData = await uploadRes.json();
+  console.log("[whatsapp] Upload response:", JSON.stringify(uploadData));
 
-  const sendResponse = await fetch(
+  if (!uploadRes.ok || !uploadData.id) {
+    console.error("[whatsapp] Media upload failed:", {
+      status: uploadRes.status,
+      response: uploadData,
+      bufferSize: audioBuffer.length,
+    });
+    throw new Error(`WhatsApp media upload failed (${uploadRes.status}): ${JSON.stringify(uploadData)}`);
+  }
+
+  // Step 3: Send audio message using uploaded media ID
+  const sendRes = await fetch(
     `${GRAPH_API_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
     {
       method: "POST",
@@ -78,24 +90,28 @@ export async function sendAudioMessage(
         Authorization: `Bearer ${WHATSAPP_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(messageBody),
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "audio",
+        audio: { id: uploadData.id },
+      }),
     }
   );
 
-  if (!sendResponse.ok) {
-    const errorBody = await sendResponse.text();
-    console.error("[whatsapp] sendAudioMessage FULL error:", {
-      status: sendResponse.status,
-      statusText: sendResponse.statusText,
-      errorBody,
-      audioUrl,
-      bufferSize: audioBuffer.length,
+  const sendData = await sendRes.json();
+  console.log("[whatsapp] Send response:", JSON.stringify(sendData));
+
+  if (!sendRes.ok) {
+    console.error("[whatsapp] sendAudioMessage error:", {
+      status: sendRes.status,
+      response: sendData,
+      mediaId: uploadData.id,
     });
-    throw new Error(`WhatsApp send audio failed (${sendResponse.status}): ${errorBody}`);
+    throw new Error(`WhatsApp send audio failed (${sendRes.status}): ${JSON.stringify(sendData)}`);
   }
 
-  const sendData = await sendResponse.json();
-  console.log("[whatsapp] Audio sent successfully:", JSON.stringify(sendData));
+  console.log("[whatsapp] Audio sent successfully, message_id:", sendData.messages?.[0]?.id);
 }
 
 /**
