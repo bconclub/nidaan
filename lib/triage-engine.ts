@@ -9,6 +9,56 @@ import type {
 } from "@/types";
 import conditions from "@/data/conditions.json";
 
+/**
+ * Sanitize text for TTS — remove symbols that would be read out literally.
+ * Keep the text clean and natural for spoken output.
+ */
+export function sanitizeForTTS(text: string): string {
+  let clean = text;
+
+  // Remove emojis and special unicode symbols
+  // eslint-disable-next-line no-control-regex
+  clean = clean.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, ""); // surrogate pairs (emojis)
+  clean = clean.replace(/[\u2600-\u27BF]/g, "");   // misc symbols
+  clean = clean.replace(/[\uFE00-\uFE0F]/g, "");   // variation selectors
+  clean = clean.replace(/\u200D/g, "");             // zero-width joiner
+
+  // Remove markdown-style formatting
+  clean = clean.replace(/\*\*/g, "");       // bold **text**
+  clean = clean.replace(/\*/g, "");          // italic *text*
+  clean = clean.replace(/_/g, " ");          // underscores
+  clean = clean.replace(/`/g, "");           // backticks
+  clean = clean.replace(/#{1,6}\s?/g, "");   // headings
+
+  // Remove forward slashes (e.g. "and/or" → "and or")
+  clean = clean.replace(/\//g, " ");
+
+  // Remove URLs
+  clean = clean.replace(/https?:\/\/\S+/gi, "");
+
+  // Remove bullet points and list markers
+  clean = clean.replace(/^[\s]*[-•]\s*/gm, "");
+  clean = clean.replace(/^\s*\d+\.\s*/gm, "");
+
+  // Replace number ranges with spoken form
+  clean = clean.replace(/(\d+)\s*-\s*(\d+)/g, "$1 to $2");
+
+  // Replace common symbols
+  clean = clean.replace(/&/g, " and ");
+  clean = clean.replace(/%/g, " percent ");
+  clean = clean.replace(/\+/g, " plus ");
+  clean = clean.replace(/=/g, " equals ");
+  clean = clean.replace(/@/g, " at ");
+
+  // Remove remaining special characters (keep letters, numbers, basic punctuation)
+  clean = clean.replace(/[^\w\s.,;:!?'"()\-\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0D80-\u0DFF]/g, " ");
+
+  // Collapse multiple spaces
+  clean = clean.replace(/\s{2,}/g, " ").trim();
+
+  return clean;
+}
+
 const SEVERITY_EMOJI: Record<TriageSeverity, string> = {
   emergency: "\uD83D\uDD34",
   urgent: "\uD83D\uDFE0",

@@ -1,7 +1,7 @@
 import { sendTextMessage, downloadMedia } from "@/lib/whatsapp";
 import { speechToText, translate, textToSpeech } from "@/lib/sarvam";
 import { analyzeSymptoms, toTriageAnalysis } from "@/lib/claude";
-import { formatTriageMessage } from "@/lib/triage-engine";
+import { formatTriageMessage, sanitizeForTTS } from "@/lib/triage-engine";
 import {
   addMessage,
   getConversationForClaude,
@@ -170,10 +170,12 @@ async function processAndRespond(
   }
 
   // TTS + audio send (inline — exact same pattern as working test)
-  console.log("[webhook] Generating TTS");
+  // Sanitize for TTS: remove emojis, symbols, markdown that would be read literally
+  const ttsText = sanitizeForTTS(localizedMessage);
+  console.log("[webhook] Generating TTS, sanitized text:", ttsText.slice(0, 100));
   try {
     const ttsResult = await textToSpeech({
-      text: localizedMessage,
+      text: ttsText,
       target_language_code: userLanguage,
     });
 
