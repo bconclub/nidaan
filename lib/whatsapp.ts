@@ -48,16 +48,26 @@ export async function sendAudioMessage(
   to: string,
   audioBase64: string
 ): Promise<void> {
-  console.log("[whatsapp] Uploading audio for:", to);
+  const mimeType = "audio/ogg; codecs=opus";
+  const fileName = "response.ogg";
 
-  // Step 1: Convert base64 MP3 to Buffer and upload as media
+  console.log("[whatsapp] Uploading audio for:", to, "mime:", mimeType, "base64 length:", audioBase64.length);
+
+  // Step 1: Convert base64 OGG/Opus to Buffer and upload as media
   const audioBuffer = Buffer.from(audioBase64, "base64");
-  const blob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/mpeg" });
+  const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
 
   const uploadForm = new FormData();
-  uploadForm.append("file", blob, "response.mp3");
-  uploadForm.append("type", "audio/mpeg");
+  uploadForm.append("file", blob, fileName);
+  uploadForm.append("type", mimeType);
   uploadForm.append("messaging_product", "whatsapp");
+
+  console.log("[whatsapp] Media upload request:", {
+    url: `${GRAPH_API_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/media`,
+    mimeType,
+    fileName,
+    bufferSize: audioBuffer.length,
+  });
 
   const uploadResponse = await fetch(
     `${GRAPH_API_BASE}/${WHATSAPP_PHONE_NUMBER_ID}/media`,
@@ -72,13 +82,20 @@ export async function sendAudioMessage(
 
   if (!uploadResponse.ok) {
     const errorBody = await uploadResponse.text();
-    console.error("[whatsapp] Media upload error:", uploadResponse.status, errorBody);
+    console.error("[whatsapp] Media upload FULL error:", {
+      status: uploadResponse.status,
+      statusText: uploadResponse.statusText,
+      errorBody,
+      mimeType,
+      fileName,
+      bufferSize: audioBuffer.length,
+    });
     throw new Error(`WhatsApp media upload failed (${uploadResponse.status}): ${errorBody}`);
   }
 
   const uploadData = await uploadResponse.json();
   const mediaId = uploadData.id;
-  console.log("[whatsapp] Media uploaded, id:", mediaId);
+  console.log("[whatsapp] Media uploaded successfully:", JSON.stringify(uploadData));
 
   // Step 2: Send audio message referencing the uploaded media
   const sendResponse = await fetch(
