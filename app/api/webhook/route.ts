@@ -1,7 +1,12 @@
 import { sendTextMessage, sendAudioMessage, downloadMedia } from "@/lib/whatsapp";
 import { speechToText, translate, textToSpeech } from "@/lib/sarvam";
-import { analyzeSymptoms } from "@/lib/claude";
+import { analyzeSymptoms, toTriageAnalysis } from "@/lib/claude";
 import { formatTriageMessage } from "@/lib/triage-engine";
+import {
+  addMessage,
+  getConversationForClaude,
+  getLastLanguage,
+} from "@/lib/conversation-store";
 import type { SarvamLanguageCode } from "@/types";
 
 /**
@@ -25,15 +30,12 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/webhook
- * Incoming WhatsApp message handler.
+ * Incoming WhatsApp message handler with multi-turn conversation.
  *
- * Fully automatic language detection:
- * - Audio: Sarvam STT auto-detects language
- * - Text: Sarvam Translate auto-detects via source_language_code: "auto"
- *
- * Flow:
- * - Audio: download → STT (auto-detect) → translate to English → triage → translate back → TTS → send
- * - Text:  translate to English (auto-detect source) → triage → translate back → TTS → send
+ * Claude acts as an elite diagnostician:
+ * - First 2-3 messages: asks follow-up questions
+ * - After gathering enough info: provides full triage diagnosis
+ * - Emergencies flagged immediately
  */
 export async function POST(request: Request) {
   let sender: string | null = null;
@@ -42,13 +44,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log("[webhook] POST received:", JSON.stringify(body).slice(0, 300));
 
-    // Parse Meta webhook payload
     const entry = body.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
     const message = value?.messages?.[0];
 
-    // Guard: status updates or other non-message events
     if (!message) {
       console.log("[webhook] No message in payload (status update), ignoring");
       return new Response("OK", { status: 200 });
@@ -72,7 +72,6 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("[webhook] Error processing message:", error);
 
-    // Try to notify the user about the error
     if (sender) {
       try {
         await sendTextMessage(
@@ -85,39 +84,78 @@ export async function POST(request: Request) {
     }
   }
 
-  // Always return 200 to Meta to prevent retries
   return new Response("OK", { status: 200 });
 }
 
 /**
- * Shared triage + response pipeline.
- * Takes English text + detected user language, runs triage,
- * translates back, generates TTS, and sends both audio + text.
+ * Core response pipeline.
+ *
+ * 1. Get conversation history for Claude
+ * 2. Call analyzeSymptoms with history → get question or diagnosis
+ * 3. If question: just send the question (short, translated, with TTS)
+ * 4. If diagnosis: format full triage message (translated, with TTS)
+ * 5. Store both user message and assistant response in conversation
  */
-async function triageAndRespond(
+async function processAndRespond(
   sender: string,
   englishText: string,
   userLanguage: SarvamLanguageCode
 ): Promise<void> {
-  // Step: Analyze symptoms via Claude
-  console.log("[webhook] Running triage");
-  const triageResult = await analyzeSymptoms(englishText);
-  const formattedMessage = formatTriageMessage(triageResult);
-  console.log("[webhook] Triage:", triageResult.severity, triageResult.condition);
+  // Store user message in conversation
+  addMessage(sender, {
+    role: "user",
+    content: englishText,
+    timestamp: new Date(),
+    language: userLanguage,
+  });
 
-  // Step: Translate response back to user's language
-  let localizedMessage = formattedMessage;
+  // Get conversation history for Claude
+  const history = getConversationForClaude(sender);
+  // Remove the last entry (current message) — analyzeSymptoms will add it
+  const priorHistory = history.slice(0, -1);
+
+  console.log("[webhook] Calling Claude with history:", priorHistory.length, "messages");
+
+  // Call Claude with conversation history
+  const nidaanResponse = await analyzeSymptoms(englishText, undefined, priorHistory);
+
+  let responseText: string;
+
+  if (nidaanResponse.type === "question") {
+    // Claude is asking a follow-up question — send it directly
+    responseText = nidaanResponse.message;
+    console.log("[webhook] Claude asks:", responseText.slice(0, 100));
+  } else {
+    // Claude gave a diagnosis — format the full triage message
+    const triageAnalysis = toTriageAnalysis(nidaanResponse);
+    responseText = formatTriageMessage(triageAnalysis);
+    console.log("[webhook] Diagnosis:", nidaanResponse.condition, nidaanResponse.severity);
+  }
+
+  // Store Claude's response in conversation
+  addMessage(sender, {
+    role: "assistant",
+    content: responseText,
+    timestamp: new Date(),
+    language: userLanguage,
+    triage: nidaanResponse.type === "diagnosis"
+      ? toTriageAnalysis(nidaanResponse)
+      : undefined,
+  });
+
+  // Translate response to user's language if needed
+  let localizedMessage = responseText;
   if (userLanguage !== "en-IN") {
     console.log("[webhook] Translating response to", userLanguage);
     const backTranslate = await translate({
-      input: formattedMessage,
+      input: responseText,
       source_language_code: "en-IN",
       target_language_code: userLanguage,
     });
     localizedMessage = backTranslate.translated_text;
   }
 
-  // Step: Convert to speech via Sarvam TTS (with fallback)
+  // TTS (with fallback — skip audio if TTS fails)
   console.log("[webhook] Generating TTS");
   try {
     const ttsResult = await textToSpeech({
@@ -130,17 +168,16 @@ async function triageAndRespond(
       console.log("[webhook] Audio response sent");
     }
   } catch (ttsError) {
-    console.error("[webhook] TTS failed, skipping audio response:", ttsError);
+    console.error("[webhook] TTS failed, skipping audio:", ttsError);
   }
 
-  // Step: Always send text summary
+  // Always send text
   await sendTextMessage(sender, localizedMessage);
   console.log("[webhook] Response sent to:", sender);
 }
 
 /**
- * Handle an incoming audio message:
- * download → STT (auto-detect language) → translate to English → triage pipeline
+ * Handle audio: download → STT (auto-detect) → translate → processAndRespond
  */
 async function handleAudioMessage(
   sender: string,
@@ -155,17 +192,14 @@ async function handleAudioMessage(
     return;
   }
 
-  // Step 1: Download audio from WhatsApp
-  console.log("[webhook] Step 1: Downloading audio");
+  // Download audio
+  console.log("[webhook] Downloading audio");
   const audioBuffer = await downloadMedia(mediaId);
   const audioBlob = new Blob([new Uint8Array(audioBuffer)], { type: "audio/ogg" });
 
-  // Step 2: Speech-to-Text via Sarvam (auto-detect language — no language_code sent)
-  console.log("[webhook] Step 2: Running STT (auto-detect)");
-  const sttResult = await speechToText({
-    audio: audioBlob,
-    // language_code omitted → Sarvam auto-detects
-  });
+  // STT (auto-detect language)
+  console.log("[webhook] Running STT (auto-detect)");
+  const sttResult = await speechToText({ audio: audioBlob });
 
   if (!sttResult.transcript) {
     await sendTextMessage(
@@ -176,16 +210,16 @@ async function handleAudioMessage(
   }
 
   const detectedLang = sttResult.language_code;
-  console.log("[webhook] STT result:", {
+  console.log("[webhook] STT:", {
     transcript: sttResult.transcript.slice(0, 100),
-    detectedLanguage: detectedLang,
+    language: detectedLang,
     confidence: sttResult.language_probability,
   });
 
-  // Step 3: Translate to English if not already English
+  // Translate to English if needed
   let englishText = sttResult.transcript;
   if (detectedLang !== "en-IN") {
-    console.log("[webhook] Step 3: Translating to English from", detectedLang);
+    console.log("[webhook] Translating to English from", detectedLang);
     const translateResult = await translate({
       input: sttResult.transcript,
       source_language_code: detectedLang,
@@ -193,16 +227,14 @@ async function handleAudioMessage(
     });
     englishText = translateResult.translated_text;
   }
-  console.log("[webhook] English text:", englishText.slice(0, 100));
 
-  // Step 4+: Triage and respond in detected language
-  await triageAndRespond(sender, englishText, detectedLang);
-  console.log("[webhook] Audio message handled for:", sender);
+  await processAndRespond(sender, englishText, detectedLang);
 }
 
 /**
- * Handle an incoming text message:
- * auto-detect language via Sarvam translate → triage → respond in detected language
+ * Handle text: auto-detect language → translate → processAndRespond
+ *
+ * Uses getLastLanguage() to remember returning users' language preference.
  */
 async function handleTextMessage(
   sender: string,
@@ -218,9 +250,8 @@ async function handleTextMessage(
 
   console.log("[webhook] User text:", userText.slice(0, 100));
 
-  // Step 1: Translate to English using auto-detect source language
-  // Sarvam's mayura:v1 model supports source_language_code: "auto"
-  console.log("[webhook] Step 1: Translating to English (auto-detect source)");
+  // Translate to English (auto-detect source language)
+  console.log("[webhook] Translating to English (auto-detect)");
   const translateResult = await translate({
     input: userText,
     source_language_code: "auto",
@@ -228,16 +259,21 @@ async function handleTextMessage(
   });
 
   const englishText = translateResult.translated_text;
-  console.log("[webhook] English text:", englishText.slice(0, 100));
 
-  // Determine user language: if text is pure ASCII, it's likely English
-  // Otherwise, use the heuristic to pick a response language
-  // Since we used auto-detect, we infer from the original text
+  // Determine response language:
+  // 1. If non-ASCII text → use last known language or default to "hi-IN"
+  // 2. If ASCII → English
   const isNonEnglish = /[^\u0000-\u007F]/.test(userText);
-  const userLanguage: SarvamLanguageCode = isNonEnglish ? "hi-IN" : "en-IN";
-  console.log("[webhook] Response language:", userLanguage);
+  let userLanguage: SarvamLanguageCode;
 
-  // Step 2+: Triage and respond in detected language
-  await triageAndRespond(sender, englishText, userLanguage);
-  console.log("[webhook] Text message handled for:", sender);
+  if (isNonEnglish) {
+    // Use last detected language from conversation history, or default hi-IN
+    const lastLang = getLastLanguage(sender);
+    userLanguage = (lastLang as SarvamLanguageCode) || "hi-IN";
+  } else {
+    userLanguage = "en-IN";
+  }
+
+  console.log("[webhook] Response language:", userLanguage);
+  await processAndRespond(sender, englishText, userLanguage);
 }

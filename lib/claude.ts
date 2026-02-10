@@ -6,6 +6,8 @@ import type {
   Severity,
   TriageAnalysis,
   TriageSeverity,
+  NidaanResponse,
+  NidaanResponseType,
 } from "@/types";
 
 const client = new Anthropic({
@@ -14,31 +16,66 @@ const client = new Anthropic({
 
 const CLAUDE_MODEL = "claude-sonnet-4-20250514";
 
-const TRIAGE_SYSTEM_PROMPT = `You are Nidaan AI, a clinical triage assistant built for rural India. Given patient symptoms in English, respond ONLY in valid JSON:
+const TRIAGE_SYSTEM_PROMPT = `You are Nidaan AI, the world's best diagnostic physician. You NEVER rush to a diagnosis. You probe methodically like a top doctor would.
+
+RULES:
+1. FIRST 2-3 messages: Ask SHORT, focused follow-up questions. One question at a time. Examples:
+   - "How many days has the fever lasted?"
+   - "Is the pain sharp or dull?"
+   - "Any vomiting or nausea?"
+   - "Are you taking any medication?"
+   - "How old are you?"
+
+2. Keep responses to 1-2 sentences MAX. No long explanations yet.
+
+3. ONLY after gathering enough information (minimum 3-4 exchanges), provide a triage assessment.
+
+4. When you respond, ALWAYS respond in this JSON format:
 {
-  "condition": "most likely condition",
-  "severity": "emergency" | "urgent" | "routine",
-  "confidence": 0.0-1.0,
-  "explanation": "simple 2-line explanation a village health worker would understand",
-  "recommended_action": "what to do right now",
-  "specialist_needed": "type of doctor needed",
-  "red_flags": ["any danger signs to watch for"],
-  "home_care": "any immediate home care tips if routine"
+  "type": "question" | "diagnosis",
+  "message": "your short question or explanation",
+  "condition": null | "condition name",
+  "severity": null | "emergency" | "urgent" | "routine",
+  "confidence": null | 0.0-1.0,
+  "recommended_action": null | "what to do",
+  "specialist_needed": null | "doctor type",
+  "red_flags": [],
+  "home_care": null | "advice"
 }
-Rules:
-- Always recommend consulting a real doctor
-- Flag emergencies aggressively (chest pain, breathing difficulty, high fever in children, seizures, bleeding)
-- Keep explanation in simple language, no medical jargon
-- If symptoms are vague, ask one clarifying question in the response
-- Never prescribe medication`;
+
+5. If type is "question" — just ask the follow-up, no diagnosis yet.
+6. If type is "diagnosis" — give the full triage.
+7. ALWAYS flag emergencies immediately regardless of how many questions asked (chest pain, breathing difficulty, seizures, heavy bleeding).
+8. Never prescribe medication.
+9. Speak simply — like talking to a village health worker.
+10. Be warm, empathetic, but precise.`;
 
 /**
- * Analyze symptoms using Claude and return a structured triage result.
+ * Analyze symptoms using Claude with multi-turn conversation support.
+ *
+ * Returns a NidaanResponse which can be either:
+ * - type: "question" — Claude wants more info, message contains the follow-up question
+ * - type: "diagnosis" — Claude has enough info, full triage analysis included
  */
 export async function analyzeSymptoms(
   symptomText: string,
-  patientContext?: { age?: number; gender?: string }
-): Promise<TriageAnalysis> {
+  patientContext?: { age?: number; gender?: string },
+  conversationHistory?: { role: string; content: string }[]
+): Promise<NidaanResponse> {
+  // Build the messages array with conversation history
+  const messages: { role: "user" | "assistant"; content: string }[] = [];
+
+  // Add prior conversation history
+  if (conversationHistory && conversationHistory.length > 0) {
+    for (const msg of conversationHistory) {
+      messages.push({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      });
+    }
+  }
+
+  // Build current user message
   let userMessage = symptomText;
   if (patientContext?.age || patientContext?.gender) {
     const parts: string[] = [];
@@ -47,8 +84,11 @@ export async function analyzeSymptoms(
     userMessage = `Patient: ${parts.join(", ")}\nSymptoms: ${symptomText}`;
   }
 
+  messages.push({ role: "user", content: userMessage });
+
   console.log("[claude] analyzeSymptoms called:", {
     inputLength: symptomText.length,
+    historyLength: conversationHistory?.length ?? 0,
     hasContext: !!patientContext,
   });
 
@@ -56,7 +96,7 @@ export async function analyzeSymptoms(
     model: CLAUDE_MODEL,
     max_tokens: 1024,
     system: TRIAGE_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userMessage }],
+    messages,
   });
 
   const textBlock = response.content.find((block) => block.type === "text");
@@ -65,9 +105,9 @@ export async function analyzeSymptoms(
   }
 
   const rawText = textBlock.text.trim();
-  console.log("[claude] Raw response:", rawText.slice(0, 200));
+  console.log("[claude] Raw response:", rawText.slice(0, 300));
 
-  // Extract JSON — handle cases where Claude wraps it in markdown code fences
+  // Extract JSON — handle markdown code fences
   let jsonString = rawText;
   const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) {
@@ -79,10 +119,39 @@ export async function analyzeSymptoms(
     parsed = JSON.parse(jsonString);
   } catch {
     console.error("[claude] Failed to parse JSON:", jsonString.slice(0, 300));
-    throw new Error(`Claude returned invalid JSON: ${jsonString.slice(0, 100)}`);
+    // If Claude didn't return JSON, treat it as a question
+    return {
+      type: "question",
+      message: rawText,
+      condition: null,
+      severity: null,
+      confidence: null,
+      recommended_action: null,
+      specialist_needed: null,
+      red_flags: [],
+      home_care: null,
+    };
   }
 
-  // Validate and coerce the response into our type
+  const responseType: NidaanResponseType =
+    parsed.type === "diagnosis" ? "diagnosis" : "question";
+
+  if (responseType === "question") {
+    console.log("[claude] Follow-up question:", parsed.message);
+    return {
+      type: "question",
+      message: String(parsed.message || "Could you tell me more about your symptoms?"),
+      condition: null,
+      severity: null,
+      confidence: null,
+      recommended_action: null,
+      specialist_needed: null,
+      red_flags: [],
+      home_care: null,
+    };
+  }
+
+  // Type is "diagnosis" — validate and coerce
   const validSeverities: TriageSeverity[] = ["emergency", "urgent", "routine"];
   const severity = validSeverities.includes(parsed.severity as TriageSeverity)
     ? (parsed.severity as TriageSeverity)
@@ -92,26 +161,44 @@ export async function analyzeSymptoms(
     ? Math.max(0, Math.min(1, parsed.confidence))
     : 0.5;
 
-  const result: TriageAnalysis = {
+  const result: NidaanResponse = {
+    type: "diagnosis",
+    message: String(parsed.message || "Based on the information you provided:"),
     condition: String(parsed.condition || "Unknown"),
     severity,
     confidence,
-    explanation: String(parsed.explanation || "Please consult a doctor for proper diagnosis."),
     recommended_action: String(parsed.recommended_action || "Visit your nearest health center."),
     specialist_needed: String(parsed.specialist_needed || "General Physician"),
     red_flags: Array.isArray(parsed.red_flags)
       ? parsed.red_flags.map(String)
       : [],
-    home_care: String(parsed.home_care || ""),
+    home_care: parsed.home_care ? String(parsed.home_care) : null,
   };
 
-  console.log("[claude] Triage result:", {
+  console.log("[claude] Diagnosis:", {
     condition: result.condition,
     severity: result.severity,
     confidence: result.confidence,
   });
 
   return result;
+}
+
+/**
+ * Convert a NidaanResponse diagnosis into a TriageAnalysis
+ * (for compatibility with formatTriageMessage).
+ */
+export function toTriageAnalysis(response: NidaanResponse): TriageAnalysis {
+  return {
+    condition: response.condition || "Unknown",
+    severity: response.severity || "urgent",
+    confidence: response.confidence || 0.5,
+    explanation: response.message,
+    recommended_action: response.recommended_action || "Visit your nearest health center.",
+    specialist_needed: response.specialist_needed || "General Physician",
+    red_flags: response.red_flags,
+    home_care: response.home_care || "",
+  };
 }
 
 /**

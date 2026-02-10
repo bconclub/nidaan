@@ -224,6 +224,33 @@ export interface TriageAnalysis {
   home_care: string;
 }
 
+/**
+ * Claude's response can be either a follow-up question or a full diagnosis.
+ */
+export type NidaanResponseType = "question" | "diagnosis";
+
+export interface NidaanResponse {
+  type: NidaanResponseType;
+  message: string;
+  condition: string | null;
+  severity: TriageSeverity | null;
+  confidence: number | null;
+  recommended_action: string | null;
+  specialist_needed: string | null;
+  red_flags: string[];
+  home_care: string | null;
+}
+
+// ── Conversation Store ──────────────────────────────────────────────
+
+export interface ConversationEntry {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  language?: string;
+  triage?: TriageAnalysis;
+}
+
 // ── Claude Clinical Reasoning ───────────────────────────────────────
 
 export interface ClinicalReasoningRequest {
