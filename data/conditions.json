@@ -1,0 +1,303 @@
+[
+  {
+    "id": "fever-viral",
+    "name": "Viral Fever",
+    "synonyms": ["bukhar", "tez bukhar", "badan garam"],
+    "symptoms": ["fever", "body_ache", "headache", "fatigue", "chills"],
+    "red_flags": ["fever_above_104", "fever_more_than_5_days", "seizures", "confusion"],
+    "severity_rules": [
+      { "condition": "fever_above_104", "escalate_to": "high" },
+      { "condition": "fever_more_than_5_days", "escalate_to": "high" }
+    ],
+    "default_severity": "low",
+    "specialty": "general",
+    "advice": "Rest, stay hydrated, take paracetamol for fever. Seek medical help if fever persists beyond 3 days or exceeds 104°F.",
+    "requires_emergency": false
+  },
+  {
+    "id": "malaria",
+    "name": "Malaria",
+    "synonyms": ["malaria bukhar", "thandi lagna"],
+    "symptoms": ["high_fever", "chills", "sweating", "headache", "body_ache", "nausea"],
+    "red_flags": ["altered_consciousness", "severe_anemia", "respiratory_distress", "jaundice"],
+    "severity_rules": [
+      { "condition": "altered_consciousness", "escalate_to": "critical" },
+      { "condition": "severe_anemia", "escalate_to": "critical" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "general",
+    "advice": "Get a malaria rapid test immediately. Do not delay treatment. Visit the nearest PHC or CHC.",
+    "requires_emergency": false
+  },
+  {
+    "id": "dengue",
+    "name": "Dengue Fever",
+    "synonyms": ["haddi tod bukhar", "dengue"],
+    "symptoms": ["high_fever", "severe_headache", "pain_behind_eyes", "joint_pain", "muscle_pain", "rash", "nausea"],
+    "red_flags": ["bleeding_gums", "blood_in_vomit", "blood_in_stool", "severe_abdominal_pain", "persistent_vomiting"],
+    "severity_rules": [
+      { "condition": "bleeding_gums", "escalate_to": "critical" },
+      { "condition": "severe_abdominal_pain", "escalate_to": "high" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "general",
+    "advice": "Monitor platelet count. Stay hydrated. Avoid aspirin/ibuprofen. Seek hospital care if bleeding or severe pain occurs.",
+    "requires_emergency": false
+  },
+  {
+    "id": "diarrhea-acute",
+    "name": "Acute Diarrhea",
+    "synonyms": ["dast", "loose motion", "pet kharab"],
+    "symptoms": ["watery_stool", "abdominal_cramps", "nausea", "vomiting", "dehydration"],
+    "red_flags": ["bloody_stool", "severe_dehydration", "high_fever", "no_urine_12hrs"],
+    "severity_rules": [
+      { "condition": "bloody_stool", "escalate_to": "high" },
+      { "condition": "severe_dehydration", "escalate_to": "critical" }
+    ],
+    "default_severity": "low",
+    "specialty": "general",
+    "advice": "Start ORS immediately. Continue fluids. Avoid solid food initially. See a doctor if blood in stool or signs of severe dehydration.",
+    "requires_emergency": false
+  },
+  {
+    "id": "typhoid",
+    "name": "Typhoid Fever",
+    "synonyms": ["miyadi bukhar", "typhoid"],
+    "symptoms": ["prolonged_fever", "headache", "abdominal_pain", "weakness", "loss_of_appetite", "constipation_or_diarrhea"],
+    "red_flags": ["intestinal_perforation", "altered_consciousness", "gastrointestinal_bleeding"],
+    "severity_rules": [
+      { "condition": "intestinal_perforation", "escalate_to": "critical" },
+      { "condition": "gastrointestinal_bleeding", "escalate_to": "critical" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "general",
+    "advice": "Get a Widal or blood culture test. Antibiotics are needed — visit a doctor. Stay hydrated and rest.",
+    "requires_emergency": false
+  },
+  {
+    "id": "respiratory-uri",
+    "name": "Upper Respiratory Infection",
+    "synonyms": ["sardi", "zukam", "khansi", "cold"],
+    "symptoms": ["cough", "runny_nose", "sore_throat", "sneezing", "mild_fever", "congestion"],
+    "red_flags": ["difficulty_breathing", "cough_more_than_3_weeks", "blood_in_sputum"],
+    "severity_rules": [
+      { "condition": "difficulty_breathing", "escalate_to": "high" },
+      { "condition": "blood_in_sputum", "escalate_to": "high" }
+    ],
+    "default_severity": "low",
+    "specialty": "general",
+    "advice": "Rest, warm fluids, steam inhalation. Most colds resolve in 7-10 days. See a doctor if symptoms worsen or persist.",
+    "requires_emergency": false
+  },
+  {
+    "id": "pneumonia",
+    "name": "Pneumonia",
+    "synonyms": ["fefde ki bimari", "nimoniya"],
+    "symptoms": ["high_fever", "cough_with_phlegm", "chest_pain", "difficulty_breathing", "fatigue", "chills"],
+    "red_flags": ["severe_breathlessness", "cyanosis", "confusion", "very_high_fever"],
+    "severity_rules": [
+      { "condition": "severe_breathlessness", "escalate_to": "critical" },
+      { "condition": "cyanosis", "escalate_to": "critical" }
+    ],
+    "default_severity": "high",
+    "specialty": "pulmonology",
+    "advice": "Seek medical attention immediately. Chest X-ray and antibiotics likely needed. Do not delay if difficulty breathing.",
+    "requires_emergency": true
+  },
+  {
+    "id": "tuberculosis",
+    "name": "Tuberculosis (TB)",
+    "synonyms": ["TB", "tapedik", "kshay rog"],
+    "symptoms": ["persistent_cough", "cough_with_blood", "night_sweats", "weight_loss", "fatigue", "evening_fever"],
+    "red_flags": ["massive_hemoptysis", "severe_weight_loss", "spinal_involvement"],
+    "severity_rules": [
+      { "condition": "massive_hemoptysis", "escalate_to": "critical" },
+      { "condition": "cough_with_blood", "escalate_to": "high" }
+    ],
+    "default_severity": "high",
+    "specialty": "pulmonology",
+    "advice": "Get sputum test and chest X-ray at the nearest DOTS center. TB is curable with complete treatment. Do not stop medicines early.",
+    "requires_emergency": false
+  },
+  {
+    "id": "asthma-attack",
+    "name": "Asthma Attack",
+    "synonyms": ["dama", "saans ki takleef", "wheezing"],
+    "symptoms": ["wheezing", "shortness_of_breath", "chest_tightness", "cough", "difficulty_speaking"],
+    "red_flags": ["cannot_speak_full_sentences", "cyanosis", "silent_chest", "drowsiness"],
+    "severity_rules": [
+      { "condition": "cannot_speak_full_sentences", "escalate_to": "critical" },
+      { "condition": "silent_chest", "escalate_to": "critical" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "pulmonology",
+    "advice": "Use rescue inhaler immediately. Sit upright. If no relief in 15 minutes or difficulty speaking, go to emergency.",
+    "requires_emergency": true
+  },
+  {
+    "id": "hypertension",
+    "name": "Hypertension (High Blood Pressure)",
+    "synonyms": ["BP badhna", "high BP", "uchh raktchap"],
+    "symptoms": ["headache", "dizziness", "blurred_vision", "chest_pain", "nosebleed"],
+    "red_flags": ["chest_pain", "severe_headache", "vision_loss", "confusion", "seizures"],
+    "severity_rules": [
+      { "condition": "chest_pain", "escalate_to": "critical" },
+      { "condition": "vision_loss", "escalate_to": "critical" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "cardiology",
+    "advice": "Get BP checked. Reduce salt intake, manage stress. If BP > 180/120 with symptoms, seek emergency care immediately.",
+    "requires_emergency": false
+  },
+  {
+    "id": "diabetes-symptoms",
+    "name": "Diabetes Mellitus Symptoms",
+    "synonyms": ["sugar ki bimari", "madhumeh", "diabetes"],
+    "symptoms": ["frequent_urination", "excessive_thirst", "unexplained_weight_loss", "fatigue", "blurred_vision", "slow_wound_healing"],
+    "red_flags": ["diabetic_ketoacidosis", "altered_consciousness", "fruity_breath_odor"],
+    "severity_rules": [
+      { "condition": "diabetic_ketoacidosis", "escalate_to": "critical" },
+      { "condition": "altered_consciousness", "escalate_to": "critical" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "endocrinology",
+    "advice": "Get fasting blood sugar and HbA1c tested. Dietary changes and exercise are important. Medication may be needed.",
+    "requires_emergency": false
+  },
+  {
+    "id": "gastritis",
+    "name": "Gastritis / Acidity",
+    "synonyms": ["gas", "acidity", "pet mein jalan", "seene mein jalan"],
+    "symptoms": ["upper_abdominal_pain", "bloating", "nausea", "heartburn", "loss_of_appetite", "belching"],
+    "red_flags": ["blood_in_vomit", "black_tarry_stool", "severe_pain", "unexplained_weight_loss"],
+    "severity_rules": [
+      { "condition": "blood_in_vomit", "escalate_to": "critical" },
+      { "condition": "black_tarry_stool", "escalate_to": "high" }
+    ],
+    "default_severity": "low",
+    "specialty": "gastroenterology",
+    "advice": "Avoid spicy, oily food and alcohol. Eat small frequent meals. Antacids may help. See a doctor if symptoms persist.",
+    "requires_emergency": false
+  },
+  {
+    "id": "uti",
+    "name": "Urinary Tract Infection",
+    "synonyms": ["peshab mein jalan", "urine infection", "UTI"],
+    "symptoms": ["burning_urination", "frequent_urination", "cloudy_urine", "lower_abdominal_pain", "fever", "urgency"],
+    "red_flags": ["high_fever_with_flank_pain", "blood_in_urine", "inability_to_urinate"],
+    "severity_rules": [
+      { "condition": "high_fever_with_flank_pain", "escalate_to": "high" },
+      { "condition": "inability_to_urinate", "escalate_to": "high" }
+    ],
+    "default_severity": "low",
+    "specialty": "general",
+    "advice": "Drink plenty of water. Get a urine test done. Antibiotics are usually needed — see a doctor.",
+    "requires_emergency": false
+  },
+  {
+    "id": "skin-infection",
+    "name": "Skin Infection / Dermatitis",
+    "synonyms": ["chamdi ki bimari", "khujli", "daad", "rash"],
+    "symptoms": ["rash", "itching", "redness", "swelling", "pus", "pain", "scaling"],
+    "red_flags": ["rapidly_spreading_redness", "high_fever_with_rash", "blistering"],
+    "severity_rules": [
+      { "condition": "rapidly_spreading_redness", "escalate_to": "high" },
+      { "condition": "high_fever_with_rash", "escalate_to": "high" }
+    ],
+    "default_severity": "low",
+    "specialty": "dermatology",
+    "advice": "Keep the area clean and dry. Avoid scratching. Apply prescribed cream if available. See a doctor if spreading or with fever.",
+    "requires_emergency": false
+  },
+  {
+    "id": "conjunctivitis",
+    "name": "Conjunctivitis (Eye Infection)",
+    "synonyms": ["aankh aana", "pink eye", "aankh lal hona"],
+    "symptoms": ["red_eyes", "watery_eyes", "itching", "discharge", "swollen_eyelids"],
+    "red_flags": ["severe_eye_pain", "vision_changes", "sensitivity_to_light"],
+    "severity_rules": [
+      { "condition": "severe_eye_pain", "escalate_to": "high" },
+      { "condition": "vision_changes", "escalate_to": "high" }
+    ],
+    "default_severity": "low",
+    "specialty": "ophthalmology",
+    "advice": "Wash hands frequently, avoid touching eyes. Use prescribed eye drops. Usually clears in 1-2 weeks. See a doctor if vision affected.",
+    "requires_emergency": false
+  },
+  {
+    "id": "anemia",
+    "name": "Anemia",
+    "synonyms": ["khoon ki kami", "kamzori"],
+    "symptoms": ["fatigue", "weakness", "pale_skin", "dizziness", "shortness_of_breath", "cold_hands_feet"],
+    "red_flags": ["severe_breathlessness", "chest_pain", "fainting"],
+    "severity_rules": [
+      { "condition": "severe_breathlessness", "escalate_to": "high" },
+      { "condition": "fainting", "escalate_to": "high" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "general",
+    "advice": "Get a complete blood count (CBC) test. Eat iron-rich foods (green leafy vegetables, jaggery). Iron supplements may be needed.",
+    "requires_emergency": false
+  },
+  {
+    "id": "pregnancy-complications",
+    "name": "Pregnancy Complications",
+    "synonyms": ["pregnancy mein problem", "garbhavastha"],
+    "symptoms": ["vaginal_bleeding", "severe_abdominal_pain", "headache", "swelling", "decreased_fetal_movement", "high_bp"],
+    "red_flags": ["heavy_vaginal_bleeding", "seizures", "severe_headache_with_swelling", "no_fetal_movement"],
+    "severity_rules": [
+      { "condition": "heavy_vaginal_bleeding", "escalate_to": "critical" },
+      { "condition": "seizures", "escalate_to": "critical" },
+      { "condition": "no_fetal_movement", "escalate_to": "high" }
+    ],
+    "default_severity": "high",
+    "specialty": "obstetrics",
+    "advice": "Go to the nearest hospital immediately. Pregnancy complications need urgent medical attention. Do not delay.",
+    "requires_emergency": true
+  },
+  {
+    "id": "chest-pain",
+    "name": "Chest Pain (Cardiac)",
+    "synonyms": ["seene mein dard", "dil ka dard", "heart attack"],
+    "symptoms": ["chest_pain", "chest_pressure", "pain_in_left_arm", "jaw_pain", "sweating", "nausea", "shortness_of_breath"],
+    "red_flags": ["crushing_chest_pain", "pain_radiating_to_arm_jaw", "profuse_sweating", "breathlessness"],
+    "severity_rules": [
+      { "condition": "crushing_chest_pain", "escalate_to": "critical" },
+      { "condition": "pain_radiating_to_arm_jaw", "escalate_to": "critical" }
+    ],
+    "default_severity": "critical",
+    "specialty": "cardiology",
+    "advice": "EMERGENCY: Call for help immediately. Chew an aspirin if available. Do not walk or exert yourself. Get to a hospital NOW.",
+    "requires_emergency": true
+  },
+  {
+    "id": "snake-bite",
+    "name": "Snake Bite",
+    "synonyms": ["saanp ka katna", "snake bite"],
+    "symptoms": ["bite_marks", "swelling", "pain", "numbness", "nausea", "difficulty_breathing", "blurred_vision"],
+    "red_flags": ["difficulty_breathing", "paralysis", "uncontrolled_bleeding", "altered_consciousness"],
+    "severity_rules": [
+      { "condition": "difficulty_breathing", "escalate_to": "critical" },
+      { "condition": "paralysis", "escalate_to": "critical" }
+    ],
+    "default_severity": "critical",
+    "specialty": "emergency",
+    "advice": "EMERGENCY: Immobilize the limb, keep calm, do NOT cut or suck the wound. Get to a hospital with anti-venom immediately.",
+    "requires_emergency": true
+  },
+  {
+    "id": "mental-health",
+    "name": "Mental Health Distress",
+    "synonyms": ["tension", "depression", "neend nahi aana", "ghabrahat"],
+    "symptoms": ["persistent_sadness", "anxiety", "sleep_disturbance", "loss_of_interest", "fatigue", "irritability", "difficulty_concentrating"],
+    "red_flags": ["suicidal_thoughts", "self_harm", "psychosis", "severe_panic"],
+    "severity_rules": [
+      { "condition": "suicidal_thoughts", "escalate_to": "critical" },
+      { "condition": "self_harm", "escalate_to": "critical" }
+    ],
+    "default_severity": "moderate",
+    "specialty": "psychiatry",
+    "advice": "You are not alone. Talk to someone you trust. Contact iCall (9152987821) or Vandrevala Foundation (9999666555). Professional help is available.",
+    "requires_emergency": false
+  }
+]
