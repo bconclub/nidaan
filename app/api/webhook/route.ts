@@ -178,9 +178,32 @@ async function processAndRespond(
     });
 
     if (ttsResult.audios?.[0]) {
+      const ttsAudioBase64 = ttsResult.audios[0];
+
+      // Debug: inspect audio format
+      console.log("[webhook] Audio base64 first 100 chars:", ttsAudioBase64.substring(0, 100));
+
       // Decode base64 to buffer
-      const audioBuffer = Buffer.from(ttsResult.audios[0], "base64");
+      const audioBuffer = Buffer.from(ttsAudioBase64, "base64");
       console.log("[webhook] TTS audio buffer size:", audioBuffer.length);
+
+      // Check audio format magic bytes
+      // MP3: 0xFF 0xFB or 0x49 0x44 (ID3)
+      // WAV: 0x52 0x49 0x46 0x46 (RIFF)
+      // OGG: 0x4F 0x67 0x67 0x53 (OggS)
+      const firstBytes = Array.from(audioBuffer.slice(0, 10));
+      console.log("[webhook] Audio buffer first 10 bytes:", firstBytes);
+      console.log("[webhook] Audio format guess:",
+        firstBytes[0] === 0xFF ? "MP3 (sync)" :
+        firstBytes[0] === 0x49 && firstBytes[1] === 0x44 ? "MP3 (ID3 tag)" :
+        firstBytes[0] === 0x52 && firstBytes[1] === 0x49 ? "WAV (RIFF)" :
+        firstBytes[0] === 0x4F && firstBytes[1] === 0x67 ? "OGG" :
+        "UNKNOWN"
+      );
+
+      // Store for /api/test-play so we can verify in browser
+      const { setLatestAudio } = await import("@/lib/test-audio-store");
+      setLatestAudio(audioBuffer);
 
       // Upload to Meta — EXACT same way as working test
       const formData = new FormData();
