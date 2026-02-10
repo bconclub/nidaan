@@ -131,7 +131,11 @@ export async function textToSpeech(
     enable_preprocessing: request.enable_preprocessing ?? true,
   };
 
-  console.log("[sarvam] TTS FULL request body:", JSON.stringify(requestBody, null, 2));
+  console.log("[sarvam TTS] FULL REQUEST:", JSON.stringify({
+    url: "https://api.sarvam.ai/text-to-speech",
+    headers: { "api-subscription-key": "REDACTED", "Content-Type": "application/json" },
+    body: requestBody
+  }, null, 2));
 
   const response = await fetch(`${SARVAM_BASE_URL}/text-to-speech`, {
     method: "POST",
@@ -144,7 +148,8 @@ export async function textToSpeech(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[sarvam] TTS FULL error response:", {
+    console.log("[sarvam TTS] FULL ERROR RESPONSE:", errorBody);
+    console.error("[sarvam] TTS error details:", {
       status: response.status,
       statusText: response.statusText,
       errorBody,
