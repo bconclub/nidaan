@@ -8,6 +8,7 @@ import type {
   SarvamLanguageCode,
   Language,
 } from "@/types";
+import { SARVAM_TTS_MAX_CHARS } from "@/types";
 
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY!;
 const SARVAM_BASE_URL = "https://api.sarvam.ai";
@@ -98,23 +99,26 @@ export async function speechToText(
  * Text-to-Speech (Bulbul V3): convert text to base64 audio.
  *
  * POST https://api.sarvam.ai/text-to-speech
- * Body: JSON with `inputs`, `target_language_code`, `speaker`, `model`
+ * Body: JSON with `text`, `target_language_code`, `speaker`, `model`
+ *
+ * Bulbul V3 max: 2500 chars. Text is auto-truncated if longer.
  */
 export async function textToSpeech(
   request: SarvamTTSRequest
 ): Promise<SarvamTTSResponse> {
-  const body = {
-    inputs: request.inputs,
+  // Truncate to max chars to avoid 400 errors
+  const truncatedText = request.text.length > SARVAM_TTS_MAX_CHARS
+    ? request.text.slice(0, SARVAM_TTS_MAX_CHARS)
+    : request.text;
+
+  const requestBody = {
+    text: truncatedText,
     target_language_code: request.target_language_code,
-    speaker: request.speaker ?? "meera",
+    speaker: request.speaker ?? "Shubh",
     model: request.model ?? "bulbul:v3",
   };
 
-  console.log("[sarvam] TTS request:", {
-    target_language_code: body.target_language_code,
-    speaker: body.speaker,
-    inputLength: request.inputs.reduce((sum, t) => sum + t.length, 0),
-  });
+  console.log("[sarvam] TTS request body:", JSON.stringify(requestBody, null, 2));
 
   const response = await fetch(`${SARVAM_BASE_URL}/text-to-speech`, {
     method: "POST",
@@ -122,12 +126,17 @@ export async function textToSpeech(
       "api-subscription-key": SARVAM_API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     const errorBody = await response.text();
-    console.error("[sarvam] TTS error:", response.status, errorBody);
+    console.error("[sarvam] TTS error:", {
+      status: response.status,
+      statusText: response.statusText,
+      errorBody,
+      requestBody: JSON.stringify(requestBody),
+    });
     throw new Error(
       `Sarvam TTS failed (${response.status}): ${errorBody}`
     );
@@ -136,6 +145,7 @@ export async function textToSpeech(
   const data = await response.json();
   console.log("[sarvam] TTS response:", {
     audioChunks: data.audios?.length,
+    firstChunkLength: data.audios?.[0]?.length,
   });
 
   return {

@@ -167,20 +167,24 @@ async function handleAudioMessage(
     localizedMessage = backTranslate.translated_text;
   }
 
-  // Step 6: Convert to speech via Sarvam TTS
+  // Step 6: Convert to speech via Sarvam TTS (with fallback)
   console.log("[webhook] Step 6: Generating TTS");
-  const ttsResult = await textToSpeech({
-    inputs: [localizedMessage],
-    target_language_code: userLanguage,
-    speaker: "meera",
-    model: "bulbul:v3",
-  });
+  try {
+    const ttsResult = await textToSpeech({
+      text: localizedMessage,
+      target_language_code: userLanguage,
+    });
 
-  // Step 7: Send audio response + text summary
-  console.log("[webhook] Step 7: Sending response");
-  if (ttsResult.audios?.[0]) {
-    await sendAudioMessage(sender, ttsResult.audios[0]);
+    if (ttsResult.audios?.[0]) {
+      await sendAudioMessage(sender, ttsResult.audios[0]);
+      console.log("[webhook] Audio response sent");
+    }
+  } catch (ttsError) {
+    console.error("[webhook] TTS failed, skipping audio response:", ttsError);
   }
+
+  // Step 7: Always send text summary
+  console.log("[webhook] Step 7: Sending text response");
   await sendTextMessage(sender, localizedMessage);
 
   console.log("[webhook] Audio message handled successfully for:", sender);
@@ -240,20 +244,24 @@ async function handleTextMessage(
     localizedMessage = backTranslate.translated_text;
   }
 
-  // Step 5: Convert to speech via Sarvam TTS
+  // Step 5: Convert to speech via Sarvam TTS (with fallback)
   console.log("[webhook] Step 5: Generating TTS");
-  const ttsResult = await textToSpeech({
-    inputs: [localizedMessage],
-    target_language_code: userLanguage,
-    speaker: "meera",
-    model: "bulbul:v3",
-  });
+  try {
+    const ttsResult = await textToSpeech({
+      text: localizedMessage,
+      target_language_code: userLanguage,
+    });
 
-  // Step 6: Send audio response + text summary
-  console.log("[webhook] Step 6: Sending response");
-  if (ttsResult.audios?.[0]) {
-    await sendAudioMessage(sender, ttsResult.audios[0]);
+    if (ttsResult.audios?.[0]) {
+      await sendAudioMessage(sender, ttsResult.audios[0]);
+      console.log("[webhook] Audio response sent");
+    }
+  } catch (ttsError) {
+    console.error("[webhook] TTS failed, skipping audio response:", ttsError);
   }
+
+  // Step 6: Always send text summary
+  console.log("[webhook] Step 6: Sending text response");
   await sendTextMessage(sender, localizedMessage);
 
   console.log("[webhook] Text message handled successfully for:", sender);

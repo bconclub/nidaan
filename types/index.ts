@@ -179,7 +179,7 @@ export interface SarvamSTTResponse {
 }
 
 export interface SarvamTTSRequest {
-  inputs: string[];
+  text: string;
   target_language_code: SarvamLanguageCode;
   speaker?: string;
   model?: string;
@@ -188,6 +188,9 @@ export interface SarvamTTSRequest {
 export interface SarvamTTSResponse {
   audios: string[]; // base64-encoded audio chunks
 }
+
+/** Max characters for Sarvam TTS Bulbul V3 */
+export const SARVAM_TTS_MAX_CHARS = 2500;
 
 export interface SarvamTranslateRequest {
   input: string;
