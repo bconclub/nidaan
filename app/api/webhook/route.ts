@@ -251,28 +251,11 @@ async function processAndRespond(
     localizedMessage = backTranslate.translated_text;
   }
 
-  // Persist assistant response to Supabase AFTER translation
-  // so we have both original_text (native language) and english_text
-  upsertConversation({
-    phoneNumber: sender,
-    contactName,
-    message: {
-      role: "assistant",
-      content: responseText,
-      original_text: localizedMessage,
-      english_text: responseText,
-      timestamp: new Date().toISOString(),
-      language: userLanguage,
-    },
-    detectedLanguage: userLanguage,
-    triage: triageData,
-    status: convStatus,
-  });
-
   // TTS + audio send (inline — exact same pattern as working test)
   // Sanitize for TTS: remove emojis, symbols, markdown that would be read literally
   const ttsText = sanitizeForTTS(localizedMessage);
   console.log("[webhook] Generating TTS, sanitized text:", ttsText.slice(0, 100));
+  let assistantAudioMediaId: string | null = null;
   try {
     const ttsResult = await textToSpeech({
       text: ttsText,
@@ -282,26 +265,13 @@ async function processAndRespond(
     if (ttsResult.audios?.[0]) {
       const ttsAudioBase64 = ttsResult.audios[0];
 
-      // Debug: inspect audio format
-      console.log("[webhook] Audio base64 first 100 chars:", ttsAudioBase64.substring(0, 100));
-
       // Decode base64 to buffer
       const audioBuffer = Buffer.from(ttsAudioBase64, "base64");
       console.log("[webhook] TTS audio buffer size:", audioBuffer.length);
 
       // Check audio format magic bytes
-      // MP3: 0xFF 0xFB or 0x49 0x44 (ID3)
-      // WAV: 0x52 0x49 0x46 0x46 (RIFF)
-      // OGG: 0x4F 0x67 0x67 0x53 (OggS)
       const firstBytes = Array.from(audioBuffer.slice(0, 10));
       console.log("[webhook] Audio buffer first 10 bytes:", firstBytes);
-      console.log("[webhook] Audio format guess:",
-        firstBytes[0] === 0xFF ? "MP3 (sync)" :
-        firstBytes[0] === 0x49 && firstBytes[1] === 0x44 ? "MP3 (ID3 tag)" :
-        firstBytes[0] === 0x52 && firstBytes[1] === 0x49 ? "WAV (RIFF)" :
-        firstBytes[0] === 0x4F && firstBytes[1] === 0x67 ? "OGG" :
-        "UNKNOWN"
-      );
 
       // Store for /api/test-play so we can verify in browser
       const { setLatestAudio } = await import("@/lib/test-audio-store");
@@ -338,6 +308,8 @@ async function processAndRespond(
       console.log("[webhook] Media upload response:", JSON.stringify(uploadData));
 
       if (uploadData.id) {
+        assistantAudioMediaId = uploadData.id as string;
+
         // Send audio — EXACT same way as working test
         const sendRes = await fetch(`https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
           method: "POST",
@@ -361,6 +333,27 @@ async function processAndRespond(
   } catch (ttsError) {
     console.error("[webhook] TTS/audio failed, skipping audio:", ttsError);
   }
+
+  // Persist assistant response to Supabase AFTER TTS
+  // so we capture both translated text and audio media ID
+  upsertConversation({
+    phoneNumber: sender,
+    contactName,
+    message: {
+      role: "assistant",
+      content: responseText,
+      original_text: localizedMessage,
+      english_text: responseText,
+      timestamp: new Date().toISOString(),
+      language: userLanguage,
+      audio_url: assistantAudioMediaId
+        ? `https://graph.facebook.com/v18.0/${assistantAudioMediaId}`
+        : undefined,
+    },
+    detectedLanguage: userLanguage,
+    triage: triageData,
+    status: convStatus,
+  });
 
   // Always send text — final safety: ensure no JSON leaks to user
   const cleanMessage = extractCleanMessage(localizedMessage);

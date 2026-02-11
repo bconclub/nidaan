@@ -53,6 +53,8 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("");
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [audioLoading, setAudioLoading] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -266,52 +268,115 @@ export default function ConversationsPage() {
 
                 {/* Messages thread */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                  {(selected.messages || []).map((msg, i) => (
-                    <div
-                      key={i}
-                      className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}
-                    >
+                  {(selected.messages || []).map((msg, i) => {
+                    const audioKey = `${selected.id}-${i}`;
+                    const isPlaying = playingAudio === audioKey;
+                    const isLoadingAudio = audioLoading === audioKey;
+
+                    return (
                       <div
-                        className={`max-w-[75%] rounded-xl px-4 py-3 ${
-                          msg.role === "user"
-                            ? "bg-white/10"
-                            : "bg-nidaan-teal/15"
-                        }`}
+                        key={i}
+                        className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs font-semibold ${
-                            msg.role === "user" ? "text-nidaan-white" : "text-nidaan-teal"
-                          }`}>
-                            {msg.role === "user" ? "Patient" : "Nidaan AI"}
-                          </span>
-                          {msg.language && (
-                            <span className="text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-nidaan-muted">
-                              {LANG_LABELS[msg.language] || msg.language}
+                        <div
+                          className={`max-w-[75%] rounded-xl px-4 py-3 ${
+                            msg.role === "user"
+                              ? "bg-white/10"
+                              : "bg-nidaan-teal/15"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs font-semibold ${
+                              msg.role === "user" ? "text-nidaan-white" : "text-nidaan-teal"
+                            }`}>
+                              {msg.role === "user" ? "Patient" : "Nidaan AI"}
                             </span>
-                          )}
+                            {msg.language && (
+                              <span className="text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-nidaan-muted">
+                                {LANG_LABELS[msg.language] || msg.language}
+                              </span>
+                            )}
+                            {msg.audio_url && (
+                              <span className="text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-nidaan-muted">
+                                voice
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Audio player */}
                           {msg.audio_url && (
-                            <span className="text-[10px] text-nidaan-muted">voice</span>
+                            <div className="mb-2">
+                              <button
+                                onClick={() => {
+                                  if (isPlaying) {
+                                    // Stop playing
+                                    const audioEl = document.getElementById(`audio-${audioKey}`) as HTMLAudioElement;
+                                    if (audioEl) { audioEl.pause(); audioEl.currentTime = 0; }
+                                    setPlayingAudio(null);
+                                  } else {
+                                    // Start playing via proxy
+                                    setAudioLoading(audioKey);
+                                    const proxyUrl = `/api/media?url=${encodeURIComponent(msg.audio_url!)}`;
+                                    const audioEl = document.getElementById(`audio-${audioKey}`) as HTMLAudioElement;
+                                    if (audioEl) {
+                                      audioEl.src = proxyUrl;
+                                      audioEl.play()
+                                        .then(() => { setPlayingAudio(audioKey); setAudioLoading(null); })
+                                        .catch(() => { setAudioLoading(null); });
+                                    }
+                                  }
+                                }}
+                                className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                                  isPlaying
+                                    ? "bg-nidaan-teal/30 text-nidaan-teal"
+                                    : "bg-white/10 text-nidaan-muted hover:bg-white/15 hover:text-nidaan-white"
+                                }`}
+                              >
+                                {isLoadingAudio ? (
+                                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
+                                ) : isPlaying ? (
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <rect x="6" y="4" width="4" height="16" rx="1" />
+                                    <rect x="14" y="4" width="4" height="16" rx="1" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                )}
+                                {isLoadingAudio ? "Loading..." : isPlaying ? "Pause" : "Play audio"}
+                              </button>
+                              <audio
+                                id={`audio-${audioKey}`}
+                                preload="none"
+                                onEnded={() => setPlayingAudio(null)}
+                                onError={() => { setPlayingAudio(null); setAudioLoading(null); }}
+                              />
+                            </div>
                           )}
+
+                          {/* Native language text (what user sent / what AI replied in their language) */}
+                          {msg.original_text && msg.original_text !== msg.english_text ? (
+                            <>
+                              <p className="text-sm mb-1">{msg.original_text}</p>
+                              <p className="text-xs text-nidaan-muted italic">
+                                {msg.english_text || msg.content}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm">{msg.english_text || msg.content}</p>
+                          )}
+
+                          <p className="text-[10px] text-nidaan-muted mt-2 opacity-50">
+                            {new Date(msg.timestamp).toLocaleString()}
+                          </p>
                         </div>
-
-                        {/* Native language text (what user sent / what AI replied in their language) */}
-                        {msg.original_text && msg.original_text !== msg.english_text ? (
-                          <>
-                            <p className="text-sm mb-1">{msg.original_text}</p>
-                            <p className="text-xs text-nidaan-muted italic">
-                              {msg.english_text || msg.content}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm">{msg.english_text || msg.content}</p>
-                        )}
-
-                        <p className="text-[10px] text-nidaan-muted mt-2 opacity-50">
-                          {new Date(msg.timestamp).toLocaleString()}
-                        </p>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
