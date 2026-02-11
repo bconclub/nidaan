@@ -179,7 +179,7 @@ export default function ConversationsPage() {
                           {LANG_LABELS[conv.detected_language] || conv.detected_language}
                         </span>
                         <span className="text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-nidaan-muted">
-                          {conv.messages?.length || 0}
+                          {conv.messages?.filter((m: Message) => m.role === "user").length || 0}
                         </span>
                       </div>
                     </div>
@@ -215,7 +215,7 @@ export default function ConversationsPage() {
                     <div>
                       <p className="font-semibold">{selected.contact_name || "Unknown"}</p>
                       <p className="text-xs text-nidaan-muted">
-                        {selected.phone_number} &middot; {LANG_LABELS[selected.detected_language] || selected.detected_language} &middot; {selected.messages?.length || 0} messages
+                        {selected.phone_number} &middot; {LANG_LABELS[selected.detected_language] || selected.detected_language} &middot; {selected.messages?.filter((m: Message) => m.role === "user").length || 0} messages
                       </p>
                     </div>
                   </div>
@@ -294,19 +294,17 @@ export default function ConversationsPage() {
                           )}
                         </div>
 
-                        {/* Original text (native language) */}
-                        {msg.original_text && msg.original_text !== msg.english_text && (
-                          <p className="text-sm mb-1">{msg.original_text}</p>
+                        {/* Native language text (what user sent / what AI replied in their language) */}
+                        {msg.original_text && msg.original_text !== msg.english_text ? (
+                          <>
+                            <p className="text-sm mb-1">{msg.original_text}</p>
+                            <p className="text-xs text-nidaan-muted italic">
+                              {msg.english_text || msg.content}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-sm">{msg.english_text || msg.content}</p>
                         )}
-
-                        {/* English translation or content */}
-                        <p className={`text-sm ${
-                          msg.original_text && msg.original_text !== msg.english_text
-                            ? "text-nidaan-muted text-xs italic"
-                            : ""
-                        }`}>
-                          {msg.english_text || msg.content}
-                        </p>
 
                         <p className="text-[10px] text-nidaan-muted mt-2 opacity-50">
                           {new Date(msg.timestamp).toLocaleString()}

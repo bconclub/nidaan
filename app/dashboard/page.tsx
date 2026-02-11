@@ -83,7 +83,8 @@ export default function OverviewPage() {
   const activeCount = conversations.filter((c) => c.status === "active").length;
   const emergencyCount = conversations.filter((c) => c.status === "emergency").length;
   const completedCount = conversations.filter((c) => c.status === "completed").length;
-  const totalMessages = conversations.reduce((sum, c) => sum + (c.messages?.length || 0), 0);
+  const totalUserMessages = conversations.reduce((sum, c) => sum + (c.messages?.filter((m: Message) => m.role === "user").length || 0), 0);
+  const totalAiMessages = conversations.reduce((sum, c) => sum + (c.messages?.filter((m: Message) => m.role === "assistant").length || 0), 0);
 
   // Languages breakdown
   const langCounts: Record<string, number> = {};
@@ -189,14 +190,12 @@ export default function OverviewPage() {
           {/* ─── Secondary Stats ─── */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <div className="rounded-xl border border-white/10 bg-nidaan-card px-4 py-3">
-              <p className="text-xs text-nidaan-muted mb-1">Total Messages</p>
-              <p className="text-xl font-bold">{totalMessages}</p>
+              <p className="text-xs text-nidaan-muted mb-1">User Messages</p>
+              <p className="text-xl font-bold">{totalUserMessages}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-nidaan-card px-4 py-3">
-              <p className="text-xs text-nidaan-muted mb-1">Avg Messages / Conv</p>
-              <p className="text-xl font-bold">
-                {conversations.length > 0 ? (totalMessages / conversations.length).toFixed(1) : "0"}
-              </p>
+              <p className="text-xs text-nidaan-muted mb-1">AI Responses</p>
+              <p className="text-xl font-bold">{totalAiMessages}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-nidaan-card px-4 py-3">
               <p className="text-xs text-nidaan-muted mb-1">Triaged</p>
@@ -212,27 +211,36 @@ export default function OverviewPage() {
 
           {/* ─── Two-column: Languages + Severity Breakdown ─── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {/* Languages */}
+            {/* Languages — bar chart */}
             <div className="rounded-xl border border-white/10 bg-nidaan-card px-5 py-4">
-              <h3 className="text-sm font-semibold mb-3">Languages</h3>
+              <h3 className="text-sm font-semibold mb-4">Languages</h3>
               {topLanguages.length === 0 ? (
                 <p className="text-sm text-nidaan-muted">No data yet</p>
               ) : (
-                <div className="space-y-2">
-                  {topLanguages.map(([lang, count]) => (
-                    <div key={lang} className="flex items-center justify-between">
-                      <span className="text-sm">{lang}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className="flex items-end gap-3 h-36">
+                  {topLanguages.map(([lang, count]) => {
+                    const maxCount = Math.max(...topLanguages.map(([, c]) => c));
+                    const heightPct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                    const colors = [
+                      "bg-nidaan-teal", "bg-nidaan-warning", "bg-nidaan-routine",
+                      "bg-purple-500", "bg-blue-500", "bg-pink-500",
+                      "bg-yellow-500", "bg-indigo-500", "bg-orange-500", "bg-cyan-500",
+                    ];
+                    const colorIdx = topLanguages.findIndex(([l]) => l === lang);
+                    const barColor = colors[colorIdx % colors.length];
+                    return (
+                      <div key={lang} className="flex-1 flex flex-col items-center gap-1">
+                        <span className="text-xs font-medium">{count}</span>
+                        <div className="w-full bg-white/5 rounded-t-md overflow-hidden relative" style={{ height: "100px" }}>
                           <div
-                            className="h-full bg-nidaan-teal rounded-full"
-                            style={{ width: `${Math.round((count / conversations.length) * 100)}%` }}
+                            className={`absolute bottom-0 w-full rounded-t-md ${barColor} transition-all duration-500`}
+                            style={{ height: `${heightPct}%` }}
                           />
                         </div>
-                        <span className="text-xs text-nidaan-muted w-8 text-right">{count}</span>
+                        <span className="text-[10px] text-nidaan-muted text-center leading-tight">{lang}</span>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -310,7 +318,7 @@ export default function OverviewPage() {
                       <div>
                         <p className="text-sm font-medium">{conv.contact_name || conv.phone_number}</p>
                         <p className="text-xs text-nidaan-muted">
-                          {LANG_LABELS[conv.detected_language] || conv.detected_language} &middot; {conv.messages?.length || 0} messages
+                          {LANG_LABELS[conv.detected_language] || conv.detected_language} &middot; {conv.messages?.filter((m: Message) => m.role === "user").length || 0} messages
                         </p>
                       </div>
                     </div>

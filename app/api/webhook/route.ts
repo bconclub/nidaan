@@ -239,21 +239,6 @@ async function processAndRespond(
     convStatus = (sev === "emergency") ? "emergency" : "completed";
   }
 
-  upsertConversation({
-    phoneNumber: sender,
-    contactName,
-    message: {
-      role: "assistant",
-      content: responseText,
-      english_text: responseText,
-      timestamp: new Date().toISOString(),
-      language: userLanguage,
-    },
-    detectedLanguage: userLanguage,
-    triage: triageData,
-    status: convStatus,
-  });
-
   // Translate response to user's language if needed
   let localizedMessage = responseText;
   if (userLanguage !== "en-IN") {
@@ -265,6 +250,24 @@ async function processAndRespond(
     });
     localizedMessage = backTranslate.translated_text;
   }
+
+  // Persist assistant response to Supabase AFTER translation
+  // so we have both original_text (native language) and english_text
+  upsertConversation({
+    phoneNumber: sender,
+    contactName,
+    message: {
+      role: "assistant",
+      content: responseText,
+      original_text: localizedMessage,
+      english_text: responseText,
+      timestamp: new Date().toISOString(),
+      language: userLanguage,
+    },
+    detectedLanguage: userLanguage,
+    triage: triageData,
+    status: convStatus,
+  });
 
   // TTS + audio send (inline — exact same pattern as working test)
   // Sanitize for TTS: remove emojis, symbols, markdown that would be read literally
