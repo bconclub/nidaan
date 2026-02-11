@@ -119,10 +119,18 @@ export async function analyzeSymptoms(
     parsed = JSON.parse(jsonString);
   } catch {
     console.error("[claude] Failed to parse JSON:", jsonString.slice(0, 300));
-    // If Claude didn't return JSON, treat it as a question
+
+    // Try to extract message field via regex if JSON is malformed
+    const msgMatch = rawText.match(/"message"\s*:\s*"([^"]+)"/);
+    const fallbackMessage = msgMatch
+      ? msgMatch[1]
+      : rawText.replace(/[{}"\\]/g, "").replace(/\s+/g, " ").trim();
+
+    console.log("[claude] Fallback message:", fallbackMessage.slice(0, 100));
+
     return {
       type: "question",
-      message: rawText,
+      message: fallbackMessage,
       condition: null,
       severity: null,
       confidence: null,

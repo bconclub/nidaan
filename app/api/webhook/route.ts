@@ -9,6 +9,43 @@ import {
 } from "@/lib/conversation-store";
 import type { SarvamLanguageCode } from "@/types";
 
+/**
+ * Safety check: extract clean message text from Claude's response.
+ * If the response accidentally contains raw JSON, parse it and extract .message.
+ * The user should only ever see natural language, never JSON.
+ */
+function extractCleanMessage(text: string): string {
+  // If it doesn't look like JSON, return as-is
+  if (!text.includes("{") || !text.includes("message")) {
+    return text;
+  }
+
+  try {
+    // Try to extract JSON from the text (handles code fences too)
+    let jsonStr = text;
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      jsonStr = fenceMatch[1].trim();
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed.message === "string") {
+      console.log("[webhook] Extracted clean message from JSON leak");
+      return parsed.message;
+    }
+  } catch {
+    // Not valid JSON — check if it starts with { and contains "type"
+    // This catches partial JSON leaks
+    const msgMatch = text.match(/"message"\s*:\s*"([^"]+)"/);
+    if (msgMatch) {
+      console.log("[webhook] Extracted message via regex from partial JSON");
+      return msgMatch[1];
+    }
+  }
+
+  return text;
+}
+
 // Deduplicate: track processed message IDs (Meta sends retries)
 const processedMessages = new Set<string>();
 
@@ -136,8 +173,8 @@ async function processAndRespond(
   let responseText: string;
 
   if (nidaanResponse.type === "question") {
-    // Claude is asking a follow-up question — send it directly
-    responseText = nidaanResponse.message;
+    // Claude is asking a follow-up question — extract clean message only
+    responseText = extractCleanMessage(nidaanResponse.message);
     console.log("[webhook] Claude asks:", responseText.slice(0, 100));
   } else {
     // Claude gave a diagnosis — format the full triage message
@@ -262,8 +299,9 @@ async function processAndRespond(
     console.error("[webhook] TTS/audio failed, skipping audio:", ttsError);
   }
 
-  // Always send text
-  await sendTextMessage(sender, localizedMessage);
+  // Always send text — final safety: ensure no JSON leaks to user
+  const cleanMessage = extractCleanMessage(localizedMessage);
+  await sendTextMessage(sender, cleanMessage);
   console.log("[webhook] Response sent to:", sender);
 }
 
