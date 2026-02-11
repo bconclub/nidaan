@@ -2,24 +2,54 @@
 
 import { useEffect, useState } from "react";
 
+interface Message {
+  role: string;
+  content: string;
+  original_text?: string;
+  english_text?: string;
+  timestamp: string;
+  language?: string;
+  audio_url?: string;
+}
+
+interface TriageData {
+  condition: string;
+  severity: string;
+  confidence: number;
+  recommended_action?: string;
+  specialist_needed?: string;
+  red_flags?: string[];
+  home_care?: string;
+}
+
 interface ConversationRow {
   id: string;
   phone_number: string;
   contact_name: string;
-  messages: { role: string; content: string; timestamp: string; language?: string }[];
+  messages: Message[];
   status: string;
   detected_language: string;
-  last_triage: {
-    condition: string;
-    severity: string;
-    confidence: number;
-  } | null;
+  last_triage: TriageData | null;
   created_at: string;
   updated_at: string;
 }
 
-export default function DashboardOverview() {
+const LANG_LABELS: Record<string, string> = {
+  "en-IN": "English",
+  "hi-IN": "Hindi",
+  "bn-IN": "Bengali",
+  "ta-IN": "Tamil",
+  "te-IN": "Telugu",
+  "mr-IN": "Marathi",
+  "gu-IN": "Gujarati",
+  "kn-IN": "Kannada",
+  "ml-IN": "Malayalam",
+  "pa-IN": "Punjabi",
+};
+
+export default function DashboardPage() {
   const [conversations, setConversations] = useState<ConversationRow[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
@@ -38,185 +68,257 @@ export default function DashboardOverview() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Auto-refresh every 10s
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  const selected = conversations.find((c) => c.id === selectedId) || null;
+
   const activeCount = conversations.filter((c) => c.status === "active").length;
+  const emergencyCount = conversations.filter((c) => c.status === "emergency").length;
   const completedCount = conversations.filter((c) => c.status === "completed").length;
-  const totalMessages = conversations.reduce((sum, c) => sum + c.messages.length, 0);
-
-  // Severity breakdown from completed conversations
-  const severityCounts = { emergency: 0, urgent: 0, routine: 0 };
-  conversations.forEach((c) => {
-    if (c.last_triage?.severity) {
-      const s = c.last_triage.severity as keyof typeof severityCounts;
-      if (s in severityCounts) severityCounts[s]++;
-    }
-  });
-
-  // Language distribution
-  const langCounts: Record<string, number> = {};
-  conversations.forEach((c) => {
-    const lang = c.detected_language || "en-IN";
-    langCounts[lang] = (langCounts[lang] || 0) + 1;
-  });
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
+    <div className="h-[calc(100vh-4rem)]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold font-satoshi">Dashboard</h1>
-          <p className="mt-1 text-sm text-nidaan-muted">
-            Real-time overview of Nidaan AI triage operations.
+          <h1 className="text-2xl font-bold font-satoshi">
+            Nidaan AI — <span className="text-nidaan-teal">Live Conversations</span>
+          </h1>
+          <p className="text-sm text-nidaan-muted mt-1">
+            {conversations.length} conversations &middot; {activeCount} active &middot; {emergencyCount} emergency &middot; {completedCount} completed
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-nidaan-muted">
           <span className="inline-block w-2 h-2 rounded-full bg-nidaan-teal animate-pulse" />
-          Auto-refreshing every 10s
+          Auto-refreshing
         </div>
       </div>
 
       {loading ? (
-        <div className="mt-12 text-center text-nidaan-muted">Loading...</div>
+        <div className="flex items-center justify-center h-64 text-nidaan-muted">Loading...</div>
       ) : (
-        <>
-          {/* Metric cards */}
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard label="Total Conversations" value={conversations.length} />
-            <MetricCard label="Active Now" value={activeCount} color="teal" />
-            <MetricCard label="Completed" value={completedCount} color="green" />
-            <MetricCard label="Total Messages" value={totalMessages} />
-          </div>
-
-          {/* Severity distribution */}
-          <div className="mt-8 rounded-xl border border-white/10 bg-nidaan-card p-6">
-            <h2 className="text-lg font-semibold">Triage Severity</h2>
-            <div className="mt-4 grid grid-cols-3 gap-4">
-              <SeverityCard label="Emergency" count={severityCounts.emergency} color="bg-nidaan-emergency" />
-              <SeverityCard label="Urgent" count={severityCounts.urgent} color="bg-nidaan-warning" />
-              <SeverityCard label="Routine" count={severityCounts.routine} color="bg-nidaan-routine" />
-            </div>
-          </div>
-
-          {/* Language distribution */}
-          <div className="mt-6 rounded-xl border border-white/10 bg-nidaan-card p-6">
-            <h2 className="text-lg font-semibold">Languages Detected</h2>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {Object.entries(langCounts)
-                .sort(([, a], [, b]) => b - a)
-                .map(([lang, count]) => (
-                  <div
-                    key={lang}
-                    className="rounded-lg bg-white/5 px-4 py-2 text-sm"
-                  >
-                    <span className="font-medium text-nidaan-teal">{lang}</span>
-                    <span className="ml-2 text-nidaan-muted">{count}</span>
-                  </div>
-                ))}
-              {Object.keys(langCounts).length === 0 && (
-                <p className="text-sm text-nidaan-muted">No conversations yet.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Recent conversations */}
-          <div className="mt-6 rounded-xl border border-white/10 bg-nidaan-card p-6">
-            <h2 className="text-lg font-semibold">Recent Activity</h2>
-            <div className="mt-4 space-y-3">
-              {conversations.slice(0, 5).map((conv) => (
-                <div
+        <div className="flex gap-4 h-[calc(100%-5rem)]">
+          {/* Left panel: conversation list */}
+          <div className="w-96 flex-shrink-0 overflow-y-auto space-y-2 pr-2">
+            {conversations.length === 0 ? (
+              <div className="rounded-xl border border-white/10 bg-nidaan-card p-8 text-center">
+                <p className="text-nidaan-muted text-sm">No conversations yet.</p>
+                <p className="text-nidaan-muted text-xs mt-1">Send a WhatsApp message to get started.</p>
+              </div>
+            ) : (
+              conversations.map((conv) => (
+                <button
                   key={conv.id}
-                  className="flex items-center justify-between rounded-lg bg-white/5 px-4 py-3"
+                  onClick={() => setSelectedId(conv.id)}
+                  className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${
+                    selectedId === conv.id
+                      ? "border-nidaan-teal/50 bg-nidaan-teal/10"
+                      : "border-white/10 bg-nidaan-card hover:bg-white/5"
+                  }`}
                 >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                        conv.status === "emergency"
+                          ? "bg-nidaan-emergency/20 text-nidaan-emergency"
+                          : "bg-nidaan-teal/20 text-nidaan-teal"
+                      }`}>
+                        {(conv.contact_name || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {conv.contact_name || conv.phone_number}
+                        </p>
+                        <p className="text-xs text-nidaan-muted truncate mt-0.5">
+                          {conv.messages[conv.messages.length - 1]?.content.slice(0, 50) || "No messages"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
+                      <span className="text-[10px] text-nidaan-muted">{timeAgo(conv.updated_at)}</span>
+                      <div className="flex items-center gap-1.5">
+                        <StatusDot status={conv.status} />
+                        <span className="text-[10px] text-nidaan-muted">
+                          {LANG_LABELS[conv.detected_language] || conv.detected_language}
+                        </span>
+                        <span className="text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-nidaan-muted">
+                          {conv.messages.length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* Right panel: selected conversation */}
+          <div className="flex-1 rounded-xl border border-white/10 bg-nidaan-card overflow-hidden flex flex-col">
+            {!selected ? (
+              <div className="flex-1 flex items-center justify-center text-nidaan-muted">
+                <div className="text-center">
+                  <svg className="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p className="text-sm">Select a conversation to view</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Conversation header */}
+                <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-nidaan-teal/20 flex items-center justify-center text-nidaan-teal text-xs font-bold">
-                      {(conv.contact_name || "?")[0].toUpperCase()}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                      selected.status === "emergency"
+                        ? "bg-nidaan-emergency/20 text-nidaan-emergency"
+                        : "bg-nidaan-teal/20 text-nidaan-teal"
+                    }`}>
+                      {(selected.contact_name || "?")[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{conv.contact_name || conv.phone_number}</p>
+                      <p className="font-semibold">{selected.contact_name || "Unknown"}</p>
                       <p className="text-xs text-nidaan-muted">
-                        {conv.messages.length} messages &middot; {conv.detected_language}
+                        {selected.phone_number} &middot; {LANG_LABELS[selected.detected_language] || selected.detected_language} &middot; {selected.messages.length} messages
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {conv.last_triage && (
-                      <SeverityBadge severity={conv.last_triage.severity} />
-                    )}
-                    <StatusBadge status={conv.status} />
-                    <span className="text-xs text-nidaan-muted">
-                      {timeAgo(conv.updated_at)}
-                    </span>
-                  </div>
+                  <StatusBadge status={selected.status} />
                 </div>
-              ))}
-              {conversations.length === 0 && (
-                <p className="text-sm text-nidaan-muted text-center py-8">
-                  No conversations yet. Send a WhatsApp message to get started.
-                </p>
-              )}
-            </div>
+
+                {/* Triage result card */}
+                {selected.last_triage && (
+                  <div className="mx-5 mt-4 rounded-lg bg-white/5 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <SeverityDot severity={selected.last_triage.severity} />
+                      <h3 className="text-sm font-semibold">
+                        {selected.last_triage.condition}
+                      </h3>
+                      <SeverityBadge severity={selected.last_triage.severity} />
+                      <span className="text-xs text-nidaan-muted ml-auto">
+                        {Math.round(selected.last_triage.confidence * 100)}% confidence
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                      {selected.last_triage.recommended_action && (
+                        <div className="col-span-2">
+                          <span className="text-nidaan-muted">Action: </span>
+                          <span>{selected.last_triage.recommended_action}</span>
+                        </div>
+                      )}
+                      {selected.last_triage.specialist_needed && (
+                        <div>
+                          <span className="text-nidaan-muted">Specialist: </span>
+                          <span>{selected.last_triage.specialist_needed}</span>
+                        </div>
+                      )}
+                      {selected.last_triage.red_flags && selected.last_triage.red_flags.length > 0 && (
+                        <div className="col-span-2">
+                          <span className="text-nidaan-muted">Red Flags: </span>
+                          <span className="text-nidaan-emergency">{selected.last_triage.red_flags.join(", ")}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Messages thread */}
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                  {selected.messages.map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}
+                    >
+                      <div
+                        className={`max-w-[75%] rounded-xl px-4 py-3 ${
+                          msg.role === "user"
+                            ? "bg-white/10"
+                            : "bg-nidaan-teal/15"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs font-semibold ${
+                            msg.role === "user" ? "text-nidaan-white" : "text-nidaan-teal"
+                          }`}>
+                            {msg.role === "user" ? "Patient" : "Nidaan AI"}
+                          </span>
+                          {msg.language && (
+                            <span className="text-[10px] bg-white/10 rounded px-1.5 py-0.5 text-nidaan-muted">
+                              {LANG_LABELS[msg.language] || msg.language}
+                            </span>
+                          )}
+                          {msg.audio_url && (
+                            <span className="text-[10px] text-nidaan-muted">🎤 voice</span>
+                          )}
+                        </div>
+
+                        {/* Original text (native language) */}
+                        {msg.original_text && msg.original_text !== msg.english_text && (
+                          <p className="text-sm mb-1">{msg.original_text}</p>
+                        )}
+
+                        {/* English translation or content */}
+                        <p className={`text-sm ${
+                          msg.original_text && msg.original_text !== msg.english_text
+                            ? "text-nidaan-muted text-xs italic"
+                            : ""
+                        }`}>
+                          {msg.english_text || msg.content}
+                        </p>
+
+                        <p className="text-[10px] text-nidaan-muted mt-2 opacity-50">
+                          {new Date(msg.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string | number;
-  color?: string;
-}) {
-  const valueColor =
-    color === "teal"
-      ? "text-nidaan-teal"
-      : color === "green"
-      ? "text-nidaan-routine"
-      : "text-nidaan-white";
+function StatusDot({ status }: { status: string }) {
+  const color =
+    status === "emergency" ? "bg-nidaan-emergency" :
+    status === "active" ? "bg-nidaan-teal" :
+    "bg-nidaan-muted";
 
   return (
-    <div className="rounded-xl border border-white/10 bg-nidaan-card p-5">
-      <p className="text-sm text-nidaan-muted">{label}</p>
-      <p className={`mt-1 text-3xl font-bold ${valueColor}`}>{value}</p>
-    </div>
+    <span className={`inline-block w-2 h-2 rounded-full ${color} ${
+      status === "active" || status === "emergency" ? "animate-pulse" : ""
+    }`} />
   );
 }
 
-function SeverityCard({
-  label,
-  count,
-  color,
-}: {
-  label: string;
-  count: number;
-  color: string;
-}) {
-  return (
-    <div className="text-center">
-      <div className={`inline-block w-3 h-3 rounded-full ${color} mb-2`} />
-      <p className="text-2xl font-bold">{count}</p>
-      <p className="text-xs text-nidaan-muted">{label}</p>
-    </div>
-  );
+function SeverityDot({ severity }: { severity: string }) {
+  const color =
+    severity === "emergency" ? "bg-nidaan-emergency" :
+    severity === "urgent" ? "bg-nidaan-warning" :
+    "bg-nidaan-routine";
+
+  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`} />;
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const isActive = status === "active";
+  const styles: Record<string, string> = {
+    active: "bg-nidaan-teal/20 text-nidaan-teal",
+    emergency: "bg-nidaan-emergency/20 text-nidaan-emergency",
+    completed: "bg-white/10 text-nidaan-muted",
+  };
+
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        isActive
-          ? "bg-nidaan-teal/20 text-nidaan-teal"
-          : "bg-white/10 text-nidaan-muted"
-      }`}
-    >
-      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-nidaan-teal mr-1.5 animate-pulse" />}
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${styles[status] || styles.active}`}>
+      {(status === "active" || status === "emergency") && (
+        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 animate-pulse ${
+          status === "emergency" ? "bg-nidaan-emergency" : "bg-nidaan-teal"
+        }`} />
+      )}
       {status}
     </span>
   );
@@ -230,11 +332,7 @@ function SeverityBadge({ severity }: { severity: string }) {
   };
 
   return (
-    <span
-      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-        colors[severity] || "bg-white/10 text-nidaan-muted"
-      }`}
-    >
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${colors[severity] || "bg-white/10 text-nidaan-muted"}`}>
       {severity}
     </span>
   );
@@ -243,10 +341,10 @@ function SeverityBadge({ severity }: { severity: string }) {
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return `${days}d`;
 }

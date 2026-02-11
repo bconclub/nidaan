@@ -157,7 +157,9 @@ async function processAndRespond(
   sender: string,
   englishText: string,
   userLanguage: SarvamLanguageCode,
-  contactName: string = "Unknown"
+  contactName: string = "Unknown",
+  originalText?: string,
+  audioUrl?: string
 ): Promise<void> {
   // Store user message in conversation (in-memory for Claude context)
   addMessage(sender, {
@@ -174,8 +176,11 @@ async function processAndRespond(
     message: {
       role: "user",
       content: englishText,
+      original_text: originalText || englishText,
+      english_text: englishText,
       timestamp: new Date().toISOString(),
       language: userLanguage,
+      audio_url: audioUrl,
     },
     detectedLanguage: userLanguage,
   });
@@ -227,18 +232,26 @@ async function processAndRespond(
       }
     : null;
 
+  // Determine conversation status
+  let convStatus: "active" | "completed" | "emergency" = "active";
+  if (nidaanResponse.type === "diagnosis") {
+    const sev = nidaanResponse.severity;
+    convStatus = (sev === "emergency") ? "emergency" : "completed";
+  }
+
   upsertConversation({
     phoneNumber: sender,
     contactName,
     message: {
       role: "assistant",
       content: responseText,
+      english_text: responseText,
       timestamp: new Date().toISOString(),
       language: userLanguage,
     },
     detectedLanguage: userLanguage,
     triage: triageData,
-    status: nidaanResponse.type === "diagnosis" ? "completed" : "active",
+    status: convStatus,
   });
 
   // Translate response to user's language if needed
@@ -405,7 +418,9 @@ async function handleAudioMessage(
     englishText = translateResult.translated_text;
   }
 
-  await processAndRespond(sender, englishText, detectedLang, contactName);
+  // Pass original transcript + audio media URL for Supabase
+  const audioMediaUrl = `https://graph.facebook.com/v18.0/${mediaId}`;
+  await processAndRespond(sender, englishText, detectedLang, contactName, sttResult.transcript, audioMediaUrl);
 }
 
 /**
@@ -453,5 +468,5 @@ async function handleTextMessage(
   }
 
   console.log("[webhook] Response language:", userLanguage);
-  await processAndRespond(sender, englishText, userLanguage, contactName);
+  await processAndRespond(sender, englishText, userLanguage, contactName, userText);
 }

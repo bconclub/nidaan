@@ -7,14 +7,17 @@
 
 import { supabase } from "@/lib/supabase";
 
-interface ConversationMessage {
+export interface ConversationMessage {
   role: "user" | "assistant";
   content: string;
+  original_text?: string;   // text in detected language
+  english_text?: string;    // translated to English
   timestamp: string;
   language?: string;
+  audio_url?: string;       // WhatsApp media URL for audio messages
 }
 
-interface TriageData {
+export interface TriageData {
   condition: string;
   severity: string;
   confidence: number;
@@ -24,12 +27,14 @@ interface TriageData {
   home_care: string;
 }
 
-interface ConversationRow {
+export type ConversationStatus = "active" | "completed" | "emergency";
+
+export interface ConversationRow {
   id: string;
   phone_number: string;
   contact_name: string;
   messages: ConversationMessage[];
-  status: "active" | "completed";
+  status: ConversationStatus;
   detected_language: string;
   last_triage: TriageData | null;
   created_at: string;
@@ -46,22 +51,25 @@ export async function upsertConversation(params: {
   message: ConversationMessage;
   detectedLanguage?: string;
   triage?: TriageData | null;
-  status?: "active" | "completed";
+  status?: ConversationStatus;
 }): Promise<void> {
   const { phoneNumber, contactName, message, detectedLanguage, triage, status } = params;
 
   try {
-    // Check if conversation exists for this phone number
+    // Look for an active conversation updated in the last 24 hours
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
     const { data: existing, error: fetchError } = await supabase
       .from("conversations")
-      .select("id, messages, contact_name")
+      .select("id, messages, contact_name, status")
       .eq("phone_number", phoneNumber)
+      .in("status", ["active", "emergency"])
+      .gte("updated_at", twentyFourHoursAgo)
       .order("updated_at", { ascending: false })
       .limit(1)
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") {
-      // PGRST116 = no rows found (that's OK, we'll insert)
       console.error("[conversation-db] Fetch error:", fetchError);
     }
 
@@ -75,7 +83,15 @@ export async function upsertConversation(params: {
       }
       if (detectedLanguage) updateData.detected_language = detectedLanguage;
       if (triage) updateData.last_triage = triage;
-      if (status) updateData.status = status;
+
+      // Set status: emergency trumps everything, completed trumps active
+      if (status === "emergency") {
+        updateData.status = "emergency";
+      } else if (status === "completed" && existing.status !== "emergency") {
+        updateData.status = "completed";
+      } else if (status) {
+        updateData.status = status;
+      }
 
       const { error: updateError } = await supabase
         .from("conversations")
@@ -88,7 +104,7 @@ export async function upsertConversation(params: {
         console.log("[conversation-db] Updated conversation:", existing.id, "messages:", messages.length);
       }
     } else {
-      // Insert new conversation
+      // Insert new conversation (no active one in last 24hrs)
       const insertData = {
         phone_number: phoneNumber,
         contact_name: contactName || "Unknown",
@@ -109,7 +125,6 @@ export async function upsertConversation(params: {
       }
     }
   } catch (error) {
-    // Don't throw — DB errors should never block the WhatsApp response
     console.error("[conversation-db] Unexpected error:", error);
   }
 }

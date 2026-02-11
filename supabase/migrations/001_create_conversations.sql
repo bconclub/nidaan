@@ -6,7 +6,7 @@ create table if not exists conversations (
   phone_number text not null,
   contact_name text default 'Unknown',
   messages jsonb not null default '[]'::jsonb,
-  status text not null default 'active' check (status in ('active', 'completed')),
+  status text not null default 'active' check (status in ('active', 'completed', 'emergency')),
   detected_language text default 'en-IN',
   last_triage jsonb,
   created_at timestamptz not null default now(),
