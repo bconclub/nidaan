@@ -8,6 +8,7 @@ import {
   getLastLanguage,
 } from "@/lib/conversation-store";
 import type { SarvamLanguageCode } from "@/types";
+import { upsertConversation } from "@/lib/conversation-db";
 
 /**
  * Safety check: extract clean message text from Claude's response.
@@ -107,12 +108,17 @@ export async function POST(request: Request) {
 
     sender = message.from;
     const messageType: string = message.type;
-    console.log("[webhook] Message from:", sender, "type:", messageType);
+
+    // Extract contact name from webhook payload
+    const contacts = value?.contacts;
+    const contactName = contacts?.[0]?.profile?.name || "Unknown";
+
+    console.log("[webhook] Message from:", sender, "name:", contactName, "type:", messageType);
 
     if (messageType === "audio") {
-      await handleAudioMessage(sender!, message);
+      await handleAudioMessage(sender!, message, contactName);
     } else if (messageType === "text") {
-      await handleTextMessage(sender!, message);
+      await handleTextMessage(sender!, message, contactName);
     } else {
       console.log("[webhook] Unsupported message type:", messageType);
       await sendTextMessage(
@@ -150,14 +156,28 @@ export async function POST(request: Request) {
 async function processAndRespond(
   sender: string,
   englishText: string,
-  userLanguage: SarvamLanguageCode
+  userLanguage: SarvamLanguageCode,
+  contactName: string = "Unknown"
 ): Promise<void> {
-  // Store user message in conversation
+  // Store user message in conversation (in-memory for Claude context)
   addMessage(sender, {
     role: "user",
     content: englishText,
     timestamp: new Date(),
     language: userLanguage,
+  });
+
+  // Persist user message to Supabase (non-blocking)
+  upsertConversation({
+    phoneNumber: sender,
+    contactName,
+    message: {
+      role: "user",
+      content: englishText,
+      timestamp: new Date().toISOString(),
+      language: userLanguage,
+    },
+    detectedLanguage: userLanguage,
   });
 
   // Get conversation history for Claude
@@ -183,7 +203,7 @@ async function processAndRespond(
     console.log("[webhook] Diagnosis:", nidaanResponse.condition, nidaanResponse.severity);
   }
 
-  // Store Claude's response in conversation
+  // Store Claude's response in conversation (in-memory for Claude context)
   addMessage(sender, {
     role: "assistant",
     content: responseText,
@@ -192,6 +212,33 @@ async function processAndRespond(
     triage: nidaanResponse.type === "diagnosis"
       ? toTriageAnalysis(nidaanResponse)
       : undefined,
+  });
+
+  // Persist assistant response to Supabase (non-blocking)
+  const triageData = nidaanResponse.type === "diagnosis"
+    ? {
+        condition: nidaanResponse.condition || "Unknown",
+        severity: nidaanResponse.severity || "urgent",
+        confidence: nidaanResponse.confidence || 0.5,
+        recommended_action: nidaanResponse.recommended_action || "",
+        specialist_needed: nidaanResponse.specialist_needed || "",
+        red_flags: nidaanResponse.red_flags || [],
+        home_care: nidaanResponse.home_care || "",
+      }
+    : null;
+
+  upsertConversation({
+    phoneNumber: sender,
+    contactName,
+    message: {
+      role: "assistant",
+      content: responseText,
+      timestamp: new Date().toISOString(),
+      language: userLanguage,
+    },
+    detectedLanguage: userLanguage,
+    triage: triageData,
+    status: nidaanResponse.type === "diagnosis" ? "completed" : "active",
   });
 
   // Translate response to user's language if needed
@@ -310,7 +357,8 @@ async function processAndRespond(
  */
 async function handleAudioMessage(
   sender: string,
-  message: Record<string, unknown>
+  message: Record<string, unknown>,
+  contactName: string = "Unknown"
 ): Promise<void> {
   const audio = message.audio as Record<string, unknown>;
   const mediaId = audio?.id as string;
@@ -357,7 +405,7 @@ async function handleAudioMessage(
     englishText = translateResult.translated_text;
   }
 
-  await processAndRespond(sender, englishText, detectedLang);
+  await processAndRespond(sender, englishText, detectedLang, contactName);
 }
 
 /**
@@ -367,7 +415,8 @@ async function handleAudioMessage(
  */
 async function handleTextMessage(
   sender: string,
-  message: Record<string, unknown>
+  message: Record<string, unknown>,
+  contactName: string = "Unknown"
 ): Promise<void> {
   const textObj = message.text as Record<string, unknown>;
   const userText = (textObj?.body as string) || "";
@@ -404,5 +453,5 @@ async function handleTextMessage(
   }
 
   console.log("[webhook] Response language:", userLanguage);
-  await processAndRespond(sender, englishText, userLanguage);
+  await processAndRespond(sender, englishText, userLanguage, contactName);
 }
