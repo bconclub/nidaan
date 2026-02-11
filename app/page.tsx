@@ -142,7 +142,6 @@ export default function LandingPage() {
   const diffRef = useScrollReveal();
   const demoRef = useScrollReveal();
   const builtRef = useScrollReveal();
-  const techRef = useScrollReveal();
 
   return (
     <>
@@ -166,11 +165,11 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl font-bold tracking-tight text-[#F8FAFC] sm:text-7xl">
-            Nidaan <span className="text-[#0FCEAB]">AI</span>
+            Nidaan <span className="text-[#0FCEAB]">Ai</span>
           </h1>
 
           <p className="mt-4 text-xl font-medium text-[#0FCEAB]/80 sm:text-2xl">
-            Understand first. Act right.
+            Diagnose first. Act right.
           </p>
 
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[#94A3B8] sm:text-lg">
@@ -202,7 +201,7 @@ export default function LandingPage() {
               Powered by Sarvam Bulbul V3
             </span>
             <p className="text-xs text-[#94A3B8]/60">
-              Supports Hindi, Kannada, Tamil, Telugu, Bengali, Malayalam + 5 more
+              Supports Hindi, Kannada, Tamil, Telugu, Bengali, Malayalam + 16 more
             </p>
           </div>
         </div>
@@ -227,52 +226,77 @@ export default function LandingPage() {
             <p className="mt-3 text-[#94A3B8]">Three steps. One voice note. Real care.</p>
           </div>
 
-          <div className="animate-on-scroll mt-16 grid gap-8 sm:grid-cols-3">
-            {/* Step 1 */}
-            <div className="group relative flex flex-col items-center text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#1E293B] bg-[#1E293B]/60 transition-colors group-hover:border-[#0FCEAB]/30">
-                <MicIcon className="h-9 w-9 text-[#0FCEAB]" />
+          {/* Steps — connected cards */}
+          <div className="animate-on-scroll relative mt-16">
+            <div className="grid gap-6 sm:grid-cols-3 sm:gap-4">
+              {/* Step 1 */}
+              <div className="group relative rounded-2xl border border-[#1E293B] bg-[#1E293B]/30 p-8 transition-all hover:border-[#0FCEAB]/20 hover:bg-[#1E293B]/50">
+                {/* Step number */}
+                <div className="mb-5 flex items-center gap-4">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[#0FCEAB]/20 bg-[#0FCEAB]/10">
+                    <MicIcon className="h-7 w-7 text-[#0FCEAB]" />
+                    <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#0FCEAB] text-xs font-bold text-[#0A0F1C]">1</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-[#F8FAFC]">Speak</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-[#94A3B8]">
+                  Send a voice note describing your symptoms in your language. Hindi, Tamil, Kannada — whatever feels natural.
+                </p>
+                {/* Arrow connector (desktop) */}
+                <div className="absolute -right-3 top-1/2 z-10 hidden -translate-y-1/2 sm:block">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#1E293B] bg-[#0A0F1C]">
+                    <svg className="h-3 w-3 text-[#0FCEAB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+                {/* Arrow connector (mobile) */}
+                <div className="mt-4 flex justify-center sm:hidden">
+                  <svg className="h-5 w-5 text-[#0FCEAB]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7" />
+                  </svg>
+                </div>
               </div>
-              <div className="mt-1 text-sm font-bold text-[#0FCEAB]">Step 1</div>
-              <h3 className="mt-2 text-xl font-semibold text-[#F8FAFC]">Speak</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[#94A3B8]">
-                Send a voice note describing your symptoms in your language
-              </p>
-              {/* Connector arrow (desktop only) */}
-              <div className="absolute -right-4 top-10 hidden text-[#1E293B] sm:block">
-                <svg className="h-6 w-8" fill="none" viewBox="0 0 32 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h20m0 0l-6-6m6 6l-6 6" />
-                </svg>
-              </div>
-            </div>
 
-            {/* Step 2 */}
-            <div className="group relative flex flex-col items-center text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#1E293B] bg-[#1E293B]/60 transition-colors group-hover:border-[#0FCEAB]/30">
-                <BrainIcon className="h-9 w-9 text-[#0FCEAB]" />
+              {/* Step 2 */}
+              <div className="group relative rounded-2xl border border-[#1E293B] bg-[#1E293B]/30 p-8 transition-all hover:border-[#0FCEAB]/20 hover:bg-[#1E293B]/50">
+                <div className="mb-5 flex items-center gap-4">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[#0FCEAB]/20 bg-[#0FCEAB]/10">
+                    <BrainIcon className="h-7 w-7 text-[#0FCEAB]" />
+                    <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#0FCEAB] text-xs font-bold text-[#0A0F1C]">2</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-[#F8FAFC]">Understand</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-[#94A3B8]">
+                  AI analyzes like a world-class diagnostician — asks follow-up questions, probes deeper into your symptoms.
+                </p>
+                <div className="absolute -right-3 top-1/2 z-10 hidden -translate-y-1/2 sm:block">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#1E293B] bg-[#0A0F1C]">
+                    <svg className="h-3 w-3 text-[#0FCEAB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-center sm:hidden">
+                  <svg className="h-5 w-5 text-[#0FCEAB]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7" />
+                  </svg>
+                </div>
               </div>
-              <div className="mt-1 text-sm font-bold text-[#0FCEAB]">Step 2</div>
-              <h3 className="mt-2 text-xl font-semibold text-[#F8FAFC]">Understand</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[#94A3B8]">
-                AI analyzes like a world-class diagnostician — asks follow-ups, probes deeper
-              </p>
-              <div className="absolute -right-4 top-10 hidden text-[#1E293B] sm:block">
-                <svg className="h-6 w-8" fill="none" viewBox="0 0 32 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h20m0 0l-6-6m6 6l-6 6" />
-                </svg>
-              </div>
-            </div>
 
-            {/* Step 3 */}
-            <div className="group flex flex-col items-center text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#1E293B] bg-[#1E293B]/60 transition-colors group-hover:border-[#0FCEAB]/30">
-                <HospitalIcon className="h-9 w-9 text-[#0FCEAB]" />
+              {/* Step 3 */}
+              <div className="group relative rounded-2xl border border-[#1E293B] bg-[#1E293B]/30 p-8 transition-all hover:border-[#0FCEAB]/20 hover:bg-[#1E293B]/50">
+                <div className="mb-5 flex items-center gap-4">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[#0FCEAB]/20 bg-[#0FCEAB]/10">
+                    <HospitalIcon className="h-7 w-7 text-[#0FCEAB]" />
+                    <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-[#0FCEAB] text-xs font-bold text-[#0A0F1C]">3</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-[#F8FAFC]">Act</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-[#94A3B8]">
+                  Get a severity assessment, recommended next steps, and the nearest verified doctor or facility.
+                </p>
               </div>
-              <div className="mt-1 text-sm font-bold text-[#0FCEAB]">Step 3</div>
-              <h3 className="mt-2 text-xl font-semibold text-[#F8FAFC]">Act</h3>
-              <p className="mt-2 text-sm leading-relaxed text-[#94A3B8]">
-                Get severity assessment, recommended action, and nearest facility
-              </p>
             </div>
           </div>
         </div>
@@ -289,34 +313,33 @@ export default function LandingPage() {
         <div className="mx-auto max-w-5xl">
           <div className="animate-on-scroll text-center">
             <h2 className="text-3xl font-bold leading-tight text-[#F8FAFC] sm:text-4xl md:text-5xl">
-              900 million Indians can&apos;t describe
-              <br className="hidden sm:block" /> their symptoms in English.
+              The problem is real
             </h2>
           </div>
 
           <div className="animate-on-scroll mt-14 grid gap-6 sm:grid-cols-3">
             <div className="rounded-2xl border border-[#EF4444]/20 bg-[#1E293B]/60 p-8 text-center">
               <div className="text-4xl font-bold text-[#EF4444] sm:text-5xl">
-                <AnimatedStat value="70" suffix="%" />
+                <AnimatedStat value="65" suffix="%" />
               </div>
               <p className="mt-3 text-sm leading-relaxed text-[#94A3B8]">
-                of rural Indians are misdiagnosed or never diagnosed
+                of Indians can&apos;t describe their symptoms in English
               </p>
             </div>
             <div className="rounded-2xl border border-[#F59E0B]/20 bg-[#1E293B]/60 p-8 text-center">
               <div className="text-4xl font-bold text-[#F59E0B] sm:text-5xl">
-                1:<AnimatedStat value="1500" />
+                1:<AnimatedStat value="811" />
               </div>
               <p className="mt-3 text-sm leading-relaxed text-[#94A3B8]">
-                doctor-to-patient ratio in rural India
+                India&apos;s official doctor-to-patient ratio — in rural India, it&apos;s far worse
               </p>
             </div>
-            <div className="rounded-2xl border border-[#F59E0B]/20 bg-[#1E293B]/60 p-8 text-center">
-              <div className="text-4xl font-bold text-[#F59E0B] sm:text-5xl">
-                <AnimatedStat value="85" suffix="%" />
+            <div className="rounded-2xl border border-[#EF4444]/20 bg-[#1E293B]/60 p-8 text-center">
+              <div className="text-4xl font-bold text-[#EF4444] sm:text-5xl">
+                <AnimatedStat value="60" suffix="%" />
               </div>
               <p className="mt-3 text-sm leading-relaxed text-[#94A3B8]">
-                of Indians don&apos;t speak English fluently
+                of rural patients never even get a diagnosis
               </p>
             </div>
           </div>
@@ -367,7 +390,7 @@ export default function LandingPage() {
                   <path d="M16 10h.01" />
                 </svg>
               }
-              title="10+ Indian Languages"
+              title="22+ Indian Languages"
               description="Powered by Sarvam AI's Indic models. Native understanding."
             />
             <DifferentiatorCard
@@ -392,32 +415,61 @@ export default function LandingPage() {
             <h2 className="text-3xl font-bold text-[#F8FAFC] sm:text-4xl">
               Hear Nidaan in action
             </h2>
-            <p className="mt-3 text-[#94A3B8]">A real conversation, in Hindi</p>
+            <p className="mt-3 text-[#94A3B8]">Real conversations, in native scripts</p>
           </div>
 
-          <div className="animate-on-scroll mt-12 space-y-4">
-            {/* Mock conversation */}
-            <ChatBubble
-              sender="patient"
-              text="Mujhe 3 din se bukhar aa raha hai"
-              label="Patient (Hindi)"
-            />
-            <ChatBubble
-              sender="nidaan"
-              text="Bukhar ke saath koi aur symptoms hain? Jaise sir dard, body pain, ya khaansi?"
-              label="Nidaan AI"
-            />
-            <ChatBubble
-              sender="patient"
-              text="Haan body pain bhi hai"
-              label="Patient"
-            />
-            <ChatBubble
-              sender="nidaan"
-              text="Urgent: Viral fever ke lakshan hain. Paracetamol le sakte hain. Agar 2 din mein theek nahi hota toh General Physician se milein."
-              label="Nidaan AI"
-              severity="warning"
-            />
+          <div className="animate-on-scroll mt-12 space-y-8">
+            {/* Hindi conversation */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]/40">Hindi</p>
+              <div className="space-y-3">
+                <ChatBubble
+                  sender="patient"
+                  text="मुझे 3 दिन से बुखार आ रहा है"
+                  label="Patient"
+                />
+                <ChatBubble
+                  sender="nidaan"
+                  text="बुखार के साथ कोई और symptoms हैं? जैसे सिर दर्द, body pain, या खांसी?"
+                  label="Nidaan Ai"
+                />
+              </div>
+            </div>
+
+            {/* Kannada conversation */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]/40">Kannada</p>
+              <div className="space-y-3">
+                <ChatBubble
+                  sender="patient"
+                  text="ಹೂಂ, ತಲೆ ನೋವು ಮತ್ತು ಮೈಮೇಲೆ ನೋವು ಇದೆ"
+                  label="Patient"
+                />
+                <ChatBubble
+                  sender="nidaan"
+                  text="ವೈರಲ್ ಜ್ವರದ ಲಕ್ಷಣಗಳು ಕಾಣಿಸುತ್ತಿವೆ. ದಯವಿಟ್ಟು 2 ದಿನಗಳ ಒಳಗೆ General Physician ಭೇಟಿ ಮಾಡಿ."
+                  label="Nidaan Ai"
+                  severity="warning"
+                />
+              </div>
+            </div>
+
+            {/* Malayalam conversation */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]/40">Malayalam</p>
+              <div className="space-y-3">
+                <ChatBubble
+                  sender="patient"
+                  text="എനിക്ക് മൂന്ന് ദിവസമായി പനി ഉണ്ട്"
+                  label="Patient"
+                />
+                <ChatBubble
+                  sender="nidaan"
+                  text="പനിയുടെ കൂടെ വേറെ ലക്ഷണങ്ങൾ ഉണ്ടോ? തലവേദന, മേനി വേദന?"
+                  label="Nidaan Ai"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Waveform visual */}
@@ -463,26 +515,6 @@ export default function LandingPage() {
       </section>
 
       {/* ============================================================ */}
-      {/*  SECTION 7 — TECH STACK                                      */}
-      {/* ============================================================ */}
-      <section ref={techRef} className="relative border-t border-[#1E293B] px-6 py-16">
-        <div className="mx-auto max-w-5xl">
-          <div className="animate-on-scroll text-center">
-            <p className="mb-6 text-xs font-medium uppercase tracking-widest text-[#94A3B8]/60">
-              Powered by
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
-              <TechBadge name="Sarvam AI" />
-              <TechBadge name="Bulbul V3" />
-              <TechBadge name="Claude AI" />
-              <TechBadge name="ABDM Ready" />
-              <TechBadge name="WhatsApp" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ============================================================ */}
       {/*  FOOTER                                                      */}
       {/* ============================================================ */}
       <footer className="border-t border-[#1E293B] px-6 py-16">
@@ -491,12 +523,12 @@ export default function LandingPage() {
             <div className="flex items-center gap-2">
               <HeartPulseIcon className="h-5 w-5 text-[#0FCEAB]" />
               <span className="text-lg font-semibold text-[#F8FAFC]">
-                Nidaan AI
+                Nidaan Ai
               </span>
             </div>
 
             <p className="text-sm text-[#94A3B8]">
-              An INDAI Frontiers Research Lab Project
+              A <a href="https://bconclub.com" target="_blank" rel="noopener noreferrer" className="text-[#0FCEAB] hover:underline">BCON Labs</a> project
             </p>
 
             <div className="flex items-center gap-6 text-sm text-[#94A3B8]">
@@ -506,11 +538,11 @@ export default function LandingPage() {
             </div>
 
             <p className="text-sm font-medium text-[#F8FAFC]">
-              Built for India. Built in India. 🇮🇳
+              Built for India. Built in India.
             </p>
 
             <p className="max-w-md text-xs leading-relaxed text-[#94A3B8]/50">
-              Nidaan AI provides health information only. Always consult a real doctor.
+              Nidaan Ai provides health information only. Always consult a real doctor.
             </p>
           </div>
         </div>
@@ -600,10 +632,3 @@ function AudienceCard({ icon, title }: { icon: string; title: string }) {
   );
 }
 
-function TechBadge({ name }: { name: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-[#1E293B] bg-[#1E293B]/40 px-4 py-2 text-sm font-medium text-[#94A3B8] transition-colors hover:border-[#0FCEAB]/20 hover:text-[#0FCEAB]">
-      {name}
-    </span>
-  );
-}

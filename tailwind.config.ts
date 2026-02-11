@@ -46,6 +46,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        satoshi: ["Satoshi", "sans-serif"],
       },
       animation: {
         "pulse-ring": "pulse-ring 2s ease-out infinite",
